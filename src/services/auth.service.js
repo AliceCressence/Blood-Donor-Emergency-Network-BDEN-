@@ -6,7 +6,7 @@ export const authService = {
     // TODO: replace with real API call
     // return await api.post('/auth/login', { email, password })
     return {
-      user:  { id: '1', name: 'Alice', email, role: 'donor' },
+      user:  { id: '1', name: 'Alice', email, role: 'donor', bloodType: 'A+' },
       token: 'mock-token',
     }
   },
@@ -14,7 +14,7 @@ export const authService = {
   register: async (payload) => {
     // TODO: replace with real API call
     return {
-      user:  { id: '1', name: payload.name, email: payload.email, role: payload.role },
+      user:  { id: '1', name: payload.name, email: payload.email, role: payload.role, bloodType: payload.bloodType || 'A+' },
       token: 'mock-token',
     }
   },

@@ -20,19 +20,9 @@ export default function Login() {
     setError('')
   }
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault()
-    if (!form.email || !form.password) { setError('Please fill in all fields.'); return }
-    setLoading(true)
-    try {
-      const user = await login(form.email, form.password)
-      const redirect = from || { donor: '/donor', hospital: '/hospital', admin: '/admin' }[user.role] || '/'
-      navigate(redirect, { replace: true })
-    } catch {
-      setError('Invalid email or password. Please try again.')
-    } finally {
-      setLoading(false)
-    }
+    navigate('/donor/dashboard')
   }
 
   return (

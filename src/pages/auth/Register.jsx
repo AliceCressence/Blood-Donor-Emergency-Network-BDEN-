@@ -426,7 +426,7 @@ export default function Register() {
                     Welcome to BDEN. Your donor profile is live. Head to your dashboard to complete your setup
                     and start responding to emergency requests.
                   </p>
-                  <button onClick={() => navigate('/donor')} className="btn-primary px-8 py-3 justify-center">
+                  <button onClick={() => navigate('/donor/dashboard')} className="btn-primary px-8 py-3 justify-center">
                     Go to my dashboard <ArrowRight size={16} />
                   </button>
                 </>
