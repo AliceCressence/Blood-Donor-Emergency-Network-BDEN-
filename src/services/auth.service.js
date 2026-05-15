@@ -1,25 +1,26 @@
 // src/services/auth.service.js
-// Placeholder — will connect to real API in Phase 3
-
 export const authService = {
   login: async (email, password) => {
-    // TODO: replace with real API call
-    // return await api.post('/auth/login', { email, password })
+    // Detect role from email for testing
+    const role = email.includes('hospital') ? 'hospital' : 'donor'
     return {
-      user:  { id: '1', name: 'Alice', email, role: 'donor', bloodType: 'A+' },
+      user: {
+        id: '1',
+        name: role === 'hospital' ? 'Hôpital Central' : 'Alice Cressence',
+        email,
+        role,
+        bloodType: 'O+',
+        city: 'Yaoundé',
+        facilityName: 'Hôpital Central de Yaoundé',
+      },
       token: 'mock-token',
     }
   },
 
   register: async (payload) => {
-    // TODO: replace with real API call
     return {
-      user:  { id: '1', name: payload.name, email: payload.email, role: payload.role, bloodType: payload.bloodType || 'A+' },
+      user: { id: '1', ...payload },
       token: 'mock-token',
     }
-  },
-
-  logout: async () => {
-    // TODO: call API to invalidate token
   },
 }
