@@ -8,7 +8,8 @@ import HospitalLayout from '../components/layout/HospitalLayout'
 import AdminLayout    from '../components/layout/AdminLayout'
 
 // Public
-import LandingPage from '../pages/public/LandingPage'
+import LandingPage  from '../pages/public/LandingPage'
+import NotFoundPage from '../pages/public/NotFoundPage'
 
 // Auth
 import Login    from '../pages/auth/Login'
@@ -68,15 +69,15 @@ export default function AppRouter() {
 
         {/* Admin panel */}
         <Route element={<AdminLayout />}>
-          <Route path="/admin"                element={<Navigate to="/admin/dashboard" replace />} />
-          <Route path="/admin/dashboard"      element={<AdminDashboard />} />
-          <Route path="/admin/verification"   element={<FacilityVerification />} />
-          <Route path="/admin/moderation"     element={<ContentModeration />} />
-          <Route path="/admin/health"         element={<PlatformHealth />} />
+          <Route path="/admin"              element={<Navigate to="/admin/dashboard" replace />} />
+          <Route path="/admin/dashboard"    element={<AdminDashboard />} />
+          <Route path="/admin/verification" element={<FacilityVerification />} />
+          <Route path="/admin/moderation"   element={<ContentModeration />} />
+          <Route path="/admin/health"       element={<PlatformHealth />} />
         </Route>
 
-        {/* Catch-all */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* 404 — catches any unknown URL */}
+        <Route path="*" element={<NotFoundPage />} />
 
       </Routes>
     </BrowserRouter>
