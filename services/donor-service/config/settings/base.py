@@ -1,0 +1,59 @@
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+REPO_ROOT = BASE_DIR.parent.parent
+
+load_dotenv(REPO_ROOT / ".env")
+load_dotenv(BASE_DIR / ".env")
+
+SECRET_KEY = os.environ.get("DONOR_SECRET_KEY", "unsafe-donor-dev-key")
+DEBUG = os.environ.get("DEBUG", "False") == "True"
+ALLOWED_HOSTS = [host.strip() for host in os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if host.strip()]
+
+INSTALLED_APPS = [
+    "django_prometheus",
+    "django.contrib.contenttypes",
+    "django.contrib.auth",
+    "rest_framework",
+    "corsheaders",
+    "profiles",
+]
+
+MIDDLEWARE = [
+    "django_prometheus.middleware.PrometheusBeforeMiddleware",
+    "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django_prometheus.middleware.PrometheusAfterMiddleware",
+]
+
+ROOT_URLCONF = "config.urls"
+WSGI_APPLICATION = "config.wsgi.application"
+
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.environ.get("DONOR_DB_NAME", "bden_donor"),
+        "USER": os.environ.get("DONOR_DB_USER", "bden_user"),
+        "PASSWORD": os.environ.get("DONOR_DB_PASSWORD", "bden_password"),
+        "HOST": os.environ.get("DONOR_DB_HOST", "donor-db"),
+        "PORT": os.environ.get("DONOR_DB_PORT", "5432"),
+    }
+}
+
+REST_FRAMEWORK = {
+    "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
+}
+
+CORS_ALLOWED_ORIGINS = [origin.strip() for origin in os.environ.get("FRONTEND_URL", "http://localhost:5173").split(",") if origin.strip()]
+INTERNAL_API_KEY = os.environ.get("INTERNAL_API_KEY", "dev-internal-api-key")
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+LANGUAGE_CODE = "en-us"
+TIME_ZONE = "Africa/Douala"
+USE_I18N = True
+USE_TZ = True
+STATIC_URL = "/static/"

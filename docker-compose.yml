@@ -1,0 +1,172 @@
+services:
+  auth-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ${AUTH_DB_NAME:-bden_auth}
+      POSTGRES_USER: ${AUTH_DB_USER:-bden_user}
+      POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD:-bden_password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - auth_db_data:/var/lib/postgresql/data
+    networks:
+      - bden_network
+
+  donor-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ${DONOR_DB_NAME:-bden_donor}
+      POSTGRES_USER: ${DONOR_DB_USER:-bden_user}
+      POSTGRES_PASSWORD: ${DONOR_DB_PASSWORD:-bden_password}
+    ports:
+      - "5433:5432"
+    volumes:
+      - donor_db_data:/var/lib/postgresql/data
+    networks:
+      - bden_network
+
+  request-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ${REQUEST_DB_NAME:-bden_request}
+      POSTGRES_USER: ${REQUEST_DB_USER:-bden_user}
+      POSTGRES_PASSWORD: ${REQUEST_DB_PASSWORD:-bden_password}
+    ports:
+      - "5434:5432"
+    volumes:
+      - request_db_data:/var/lib/postgresql/data
+    networks:
+      - bden_network
+
+  campaign-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ${CAMPAIGN_DB_NAME:-bden_campaign}
+      POSTGRES_USER: ${CAMPAIGN_DB_USER:-bden_user}
+      POSTGRES_PASSWORD: ${CAMPAIGN_DB_PASSWORD:-bden_password}
+    ports:
+      - "5435:5432"
+    volumes:
+      - campaign_db_data:/var/lib/postgresql/data
+    networks:
+      - bden_network
+
+  notification-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ${NOTIFICATION_DB_NAME:-bden_notification}
+      POSTGRES_USER: ${NOTIFICATION_DB_USER:-bden_user}
+      POSTGRES_PASSWORD: ${NOTIFICATION_DB_PASSWORD:-bden_password}
+    ports:
+      - "5436:5432"
+    volumes:
+      - notification_db_data:/var/lib/postgresql/data
+    networks:
+      - bden_network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - bden_network
+
+  auth-service:
+    build:
+      context: ./services/auth-service
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+    command: >
+      sh -c "python manage.py migrate &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8001"
+    ports:
+      - "8001:8001"
+    depends_on:
+      - auth-db
+      - donor-service
+      - redis
+    networks:
+      - bden_network
+
+  donor-service:
+    build:
+      context: ./services/donor-service
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+    command: >
+      sh -c "python manage.py migrate &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8002"
+    ports:
+      - "8002:8002"
+    depends_on:
+      - donor-db
+    networks:
+      - bden_network
+
+  request-service:
+    build:
+      context: ./services/request-service
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8003
+    ports:
+      - "8003:8003"
+    depends_on:
+      - request-db
+    networks:
+      - bden_network
+
+  campaign-service:
+    build:
+      context: ./services/campaign-service
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8004
+    ports:
+      - "8004:8004"
+    depends_on:
+      - campaign-db
+    networks:
+      - bden_network
+
+  notification-service:
+    build:
+      context: ./services/notification-service
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8005
+    ports:
+      - "8005:8005"
+    depends_on:
+      - notification-db
+      - redis
+    networks:
+      - bden_network
+
+  nginx:
+    build:
+      context: ./infrastructure/nginx
+    ports:
+      - "8080:80"
+    depends_on:
+      - auth-service
+      - donor-service
+      - request-service
+      - campaign-service
+      - notification-service
+    networks:
+      - bden_network
+
+volumes:
+  auth_db_data:
+  donor_db_data:
+  request_db_data:
+  campaign_db_data:
+  notification_db_data:
+  redis_data:
+
+networks:
+  bden_network:
+    driver: bridge
