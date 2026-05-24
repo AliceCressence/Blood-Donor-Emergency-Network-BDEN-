@@ -8,3 +8,4 @@ python-dotenv==1.0.1
 redis==5.0.4
 celery==5.4.0
 gunicorn==21.2.0
+whitenoise==6.12.0

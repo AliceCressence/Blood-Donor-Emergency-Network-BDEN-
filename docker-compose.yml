@@ -96,6 +96,7 @@ services:
       GOOGLE_AUTH_FRONTEND_CALLBACK_URL: ${GOOGLE_AUTH_FRONTEND_CALLBACK_URL:-http://localhost:5173/auth/google/callback}
     command: >
       sh -c "python manage.py migrate &&
+             python manage.py collectstatic --no-input &&
              gunicorn config.wsgi:application --bind 0.0.0.0:8001"
     ports:
       - "8001:8001"
@@ -123,6 +124,7 @@ services:
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-api-key}
     command: >
       sh -c "python manage.py migrate &&
+             python manage.py collectstatic --no-input &&
              gunicorn config.wsgi:application --bind 0.0.0.0:8002"
     ports:
       - "8002:8002"
@@ -143,7 +145,10 @@ services:
       REQUEST_DB_PASSWORD: ${REQUEST_DB_PASSWORD:-bden_password}
       REQUEST_DB_HOST: ${REQUEST_DB_HOST:-request-db}
       REQUEST_DB_PORT: ${REQUEST_DB_PORT:-5432}
-    command: gunicorn config.wsgi:application --bind 0.0.0.0:8003
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --no-input &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8003"
     ports:
       - "8003:8003"
     depends_on:
@@ -163,7 +168,10 @@ services:
       CAMPAIGN_DB_PASSWORD: ${CAMPAIGN_DB_PASSWORD:-bden_password}
       CAMPAIGN_DB_HOST: ${CAMPAIGN_DB_HOST:-campaign-db}
       CAMPAIGN_DB_PORT: ${CAMPAIGN_DB_PORT:-5432}
-    command: gunicorn config.wsgi:application --bind 0.0.0.0:8004
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --no-input &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8004"
     ports:
       - "8004:8004"
     depends_on:
@@ -184,7 +192,10 @@ services:
       NOTIFICATION_DB_HOST: ${NOTIFICATION_DB_HOST:-notification-db}
       NOTIFICATION_DB_PORT: ${NOTIFICATION_DB_PORT:-5432}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-    command: gunicorn config.wsgi:application --bind 0.0.0.0:8005
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --no-input &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8005"
     ports:
       - "8005:8005"
     depends_on:
