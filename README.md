@@ -40,6 +40,8 @@ docker compose up --build
 
 The gateway listens on `http://localhost:8080`.
 
+Opening `http://localhost:8080/` returns a small JSON gateway index. The backend itself is API-first, so most useful routes are under `/api/...`, `/health/...`, and `/django-admin/...`.
+
 Useful health checks:
 
 ```bash
@@ -48,6 +50,22 @@ curl http://localhost:8080/health/donor/
 curl http://localhost:8080/health/request/
 curl http://localhost:8080/health/campaign/
 curl http://localhost:8080/health/notification/
+```
+
+Auth API documentation:
+
+```bash
+http://localhost:8080/api/docs/swagger/
+http://localhost:8080/api/docs/redoc/
+http://localhost:8080/api/schema.json
+```
+
+Django admin:
+
+```bash
+http://localhost:8080/django-admin/auth/
+http://localhost:8001/django-admin/  # auth-service direct
+http://localhost:8002/django-admin/  # donor-service direct
 ```
 
 Run the frontend:
@@ -59,6 +77,15 @@ npm run dev
 ```
 
 The frontend expects `VITE_API_BASE_URL=http://localhost:8080`, which is already the default in `frontend/src/services/auth.service.js`.
+
+For Google OAuth, configure these values in `.env` and in the Google Cloud Console OAuth client:
+
+```text
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+GOOGLE_REDIRECT_URI=http://localhost:5173/auth/google/callback
+GOOGLE_AUTH_FRONTEND_CALLBACK_URL=http://localhost:5173/auth/google/callback
+```
 
 ## Backend Services
 

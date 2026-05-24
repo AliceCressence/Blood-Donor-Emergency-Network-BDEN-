@@ -1,5 +1,5 @@
 // src/context/AuthContext.jsx
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useCallback, useContext, useState, useEffect } from 'react'
 import { authService } from '../services/auth.service'
 
 const AuthContext = createContext(null)
@@ -47,6 +47,21 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('bden_refresh')
   }
 
+  const loginWithGoogle = async () => {
+    const url = await authService.getGoogleAuthUrl()
+    window.location.assign(url)
+  }
+
+  const completeGoogleLogin = useCallback(async (code) => {
+    const redirectUri = `${window.location.origin}/auth/google/callback`
+    const data = await authService.completeGoogleAuth(code, redirectUri)
+    setUser(data.user)
+    localStorage.setItem('bden_user', JSON.stringify(data.user))
+    localStorage.setItem('bden_token', data.access || data.token)
+    localStorage.setItem('bden_refresh', data.refresh)
+    return data.user
+  }, [])
+
   const updateUser = (updates) => {
     const updated = { ...user, ...updates }
     setUser(updated)
@@ -54,7 +69,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, logout, updateUser, loginWithGoogle, completeGoogleLogin }}>
       {children}
     </AuthContext.Provider>
   )

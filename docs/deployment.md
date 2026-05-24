@@ -28,6 +28,18 @@ Production must provide real values for:
 - SMTP credentials
 - Google OAuth credentials if OAuth is enabled
 
+## API Documentation
+
+Auth-service exposes OpenAPI documentation with drf-yasg:
+
+```text
+/api/docs/swagger/
+/api/docs/redoc/
+/api/schema.json
+```
+
+In production these should remain behind the gateway. If the public deployment should not expose interactive docs, restrict them at Nginx or with service permissions before launch.
+
 ## Kubernetes Direction
 
 The intended K3s production namespace is `bden-prod`. Each Django service should become a Deployment with a ClusterIP Service. Only the Nginx gateway should be publicly reachable.

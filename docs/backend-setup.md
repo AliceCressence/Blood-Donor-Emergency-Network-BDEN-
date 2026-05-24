@@ -29,6 +29,14 @@ The Compose stack starts:
 - five Django service containers
 - Nginx gateway on `localhost:8080`
 
+`http://localhost:8080/` is a gateway index, not a Django app page. Use these routes while developing:
+
+```bash
+curl http://localhost:8080/
+curl http://localhost:8080/health/auth/
+curl http://localhost:8080/api/docs/swagger/
+```
+
 ## Run Migrations Manually
 
 The auth and donor service containers run migrations on startup. To run them manually:
@@ -43,6 +51,8 @@ Create an admin user:
 ```bash
 docker compose run --rm auth-service python manage.py createsuperuser
 ```
+
+The auth admin is available at `http://localhost:8080/django-admin/auth/` or directly at `http://localhost:8001/django-admin/`. Donor admin is available directly at `http://localhost:8002/django-admin/`.
 
 ## Run Tests
 

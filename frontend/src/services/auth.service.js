@@ -112,4 +112,30 @@ export const authService = {
       { headers: { Authorization: `Bearer ${access}` } },
     )
   },
+
+  getGoogleAuthUrl: async () => {
+    try {
+      const { data } = await api.get('/api/auth/google/')
+      return data.authorization_url
+    } catch (error) {
+      throw new Error(errorMessage(error), { cause: error })
+    }
+  },
+
+  completeGoogleAuth: async (code, redirectUri) => {
+    try {
+      const { data } = await api.post('/api/auth/google/callback/', {
+        code,
+        redirect_uri: redirectUri,
+      })
+      return {
+        user: normalizeUser(data),
+        access: data.access,
+        refresh: data.refresh,
+        token: data.access,
+      }
+    } catch (error) {
+      throw new Error(errorMessage(error), { cause: error })
+    }
+  },
 }

@@ -5,7 +5,7 @@ import { Droplets, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 
 export default function Login() {
-  const { login }  = useAuth()
+  const { login, loginWithGoogle }  = useAuth()
   const navigate   = useNavigate()
   const location   = useLocation()
   const from       = location.state?.from?.pathname || null
@@ -38,6 +38,17 @@ export default function Login() {
     } catch (err) {
       setError(err.message || 'Login failed. Please check your details.')
     } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleGoogleLogin = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      await loginWithGoogle()
+    } catch (err) {
+      setError(err.message || 'Google login is not available right now.')
       setLoading(false)
     }
   }
@@ -140,6 +151,18 @@ export default function Login() {
                 : <> Sign in <ArrowRight size={16} /> </>}
             </button>
           </form>
+
+          <div className="my-5 flex items-center gap-3">
+            <div className="h-px flex-1 bg-warm-200" />
+            <span className="text-xs text-warm-400">or</span>
+            <div className="h-px flex-1 bg-warm-200" />
+          </div>
+
+          <button type="button" onClick={handleGoogleLogin} disabled={loading}
+            className="btn-secondary w-full py-3 text-base justify-center">
+            <span className="font-bold text-blood-600">G</span>
+            Continue with Google
+          </button>
 
           <p className="text-center text-sm text-warm-500 mt-6">
             Don't have an account?{' '}

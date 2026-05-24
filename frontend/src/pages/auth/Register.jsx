@@ -32,7 +32,7 @@ function StepList({ steps, current }) {
 
 // ── Main component ─────────────────────────────────────────────
 export default function Register() {
-  const { register } = useAuth()
+  const { register, loginWithGoogle } = useAuth()
   const navigate     = useNavigate()
   const [params]     = useSearchParams()
   const initialRole  = params.get('role') === 'hospital' ? 'hospital' : null
@@ -68,6 +68,17 @@ export default function Register() {
     } catch {
       setError('Registration failed. Please try again.')
     } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleGoogleSignup = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      await loginWithGoogle()
+    } catch (err) {
+      setError(err.message || 'Google signup is not available right now.')
       setLoading(false)
     }
   }
@@ -161,6 +172,18 @@ export default function Register() {
                   </div>
                 </button>
               </div>
+
+              <div className="my-6 flex items-center gap-3">
+                <div className="h-px flex-1 bg-warm-200" />
+                <span className="text-xs text-warm-400">or</span>
+                <div className="h-px flex-1 bg-warm-200" />
+              </div>
+
+              <button type="button" onClick={handleGoogleSignup} disabled={loading}
+                className="btn-secondary w-full py-3 justify-center">
+                <span className="font-bold text-blood-600">G</span>
+                Sign up as donor with Google
+              </button>
 
               <p className="text-center text-sm text-warm-500 mt-6">
                 Already have an account?{' '}

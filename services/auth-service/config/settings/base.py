@@ -16,6 +16,7 @@ ALLOWED_HOSTS = [host.strip() for host in os.environ.get("ALLOWED_HOSTS", "local
 
 INSTALLED_APPS = [
     "django_prometheus",
+    "unfold",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -26,6 +27,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
+    "drf_yasg",
     "accounts",
     "authentication",
 ]
@@ -107,6 +109,7 @@ CORS_ALLOW_CREDENTIALS = True
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
 GOOGLE_REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI", "")
+GOOGLE_AUTH_FRONTEND_CALLBACK_URL = os.environ.get("GOOGLE_AUTH_FRONTEND_CALLBACK_URL", "http://localhost:5173/auth/google/callback")
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
 

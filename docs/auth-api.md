@@ -6,6 +6,14 @@ Base URL through the gateway:
 http://localhost:8080
 ```
 
+Interactive documentation:
+
+```text
+Swagger UI: http://localhost:8080/api/docs/swagger/
+ReDoc:      http://localhost:8080/api/docs/redoc/
+OpenAPI:   http://localhost:8080/api/schema.json
+```
+
 ## Donor Registration
 
 `POST /api/auth/register/donor/`
@@ -71,6 +79,39 @@ Returns:
 ```
 
 Unverified hospital accounts receive `400` with `hospital_pending_verification`.
+
+## Google OAuth
+
+Google OAuth is donor-only. Hospitals must use the hospital registration workflow because they require admin verification.
+
+`GET /api/auth/google/`
+
+Returns:
+
+```json
+{
+  "authorization_url": "https://accounts.google.com/o/oauth2/v2/auth?..."
+}
+```
+
+The frontend redirects the browser to that URL. Google redirects back to:
+
+```text
+http://localhost:5173/auth/google/callback
+```
+
+The frontend then sends Google's code to:
+
+`POST /api/auth/google/callback/`
+
+```json
+{
+  "code": "google-authorization-code",
+  "redirect_uri": "http://localhost:5173/auth/google/callback"
+}
+```
+
+Returns BDEN `access`, `refresh`, and `user` like normal donor login.
 
 ## Refresh
 

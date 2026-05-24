@@ -14,6 +14,7 @@ import NotFoundPage from '../pages/public/NotFoundPage'
 // Auth
 import Login    from '../pages/auth/Login'
 import Register from '../pages/auth/Register'
+import GoogleCallback from '../pages/auth/GoogleCallback'
 
 // Donor pages
 import DonorDashboard  from '../pages/donor/Dashboard'
@@ -47,6 +48,7 @@ export default function AppRouter() {
         {/* Auth */}
         <Route path="/login"    element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/auth/google/callback" element={<GoogleCallback />} />
 
         {/* Donor portal */}
         <Route element={<DonorLayout />}>
