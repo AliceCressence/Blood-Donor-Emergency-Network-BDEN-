@@ -1,5 +1,5 @@
 // src/components/layout/Navbar.jsx
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { Menu, X, Droplets, Bell, LogOut, User, Bot } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
@@ -13,11 +13,13 @@ const NAV_LINKS = [
 ]
 
 export default function Navbar() {
-  const { user, logout }                    = useAuth()
-  const { unreadCount, setPanelOpen }       = useNotifications()
-  const navigate                            = useNavigate()
-  const [menuOpen,  setMenuOpen]            = useState(false)
-  const [showChat,  setShowChat]            = useState(false)
+  const { user, logout }              = useAuth()
+  const { unreadCount }               = useNotifications()
+  const navigate                      = useNavigate()
+  const [menuOpen,  setMenuOpen]      = useState(false)
+  const [showChat,  setShowChat]      = useState(false)
+  const [notifOpen, setNotifOpen]     = useState(false)
+  const bellRef                       = useRef(null)
 
   const handleLogout = () => { logout(); navigate('/') }
 
@@ -38,7 +40,7 @@ export default function Navbar() {
             </span>
           </Link>
 
-          {/* Desktop nav */}
+          {/* Desktop nav links */}
           <div className="hidden md:flex items-center gap-1">
             {NAV_LINKS.map(({ to, label }) => (
               <NavLink key={to} to={to}
@@ -53,7 +55,7 @@ export default function Navbar() {
           {/* Right side */}
           <div className="hidden md:flex items-center gap-3">
 
-            {/* AI chatbot button — always visible */}
+            {/* AI chatbot button */}
             <button onClick={() => setShowChat(true)}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl
                          bg-blood-50 border border-blood-100 text-blood-600
@@ -69,19 +71,35 @@ export default function Navbar() {
                   My portal
                 </Link>
 
-                {/* Notification bell */}
-                <button onClick={() => setPanelOpen(true)}
-                  className="relative p-2 rounded-lg text-warm-500 hover:bg-warm-100 hover:text-warm-900 transition-colors">
-                  <Bell size={18} />
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-blood-600
-                                     text-white text-[10px] font-bold flex items-center justify-center">
-                      {unreadCount > 9 ? '9+' : unreadCount}
-                    </span>
-                  )}
-                </button>
+                {/* Notification bell — toggles dropdown */}
+                <div className="relative">
+                  <button
+                    ref={bellRef}
+                    onClick={() => setNotifOpen(v => !v)}
+                    className={`relative p-2 rounded-lg transition-colors ${
+                      notifOpen
+                        ? 'bg-blood-50 text-blood-600'
+                        : 'text-warm-500 hover:bg-warm-100 hover:text-warm-900'
+                    }`}
+                  >
+                    <Bell size={18} />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-blood-600
+                                       text-white text-[10px] font-bold flex items-center justify-center">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                  </button>
 
-                {/* User */}
+                  {/* Dropdown panel */}
+                  <NotificationPanel
+                    isOpen={notifOpen}
+                    onClose={() => setNotifOpen(false)}
+                    anchorRef={bellRef}
+                  />
+                </div>
+
+                {/* User info */}
                 <div className="flex items-center gap-2 pl-2 border-l border-warm-200">
                   <div className="w-8 h-8 rounded-full bg-blood-100 flex items-center justify-center">
                     <User size={14} className="text-blood-600" />
@@ -90,7 +108,7 @@ export default function Navbar() {
                     {user.name}
                   </span>
                   <button onClick={handleLogout}
-                    className="p-1.5 rounded-lg text-warm-400 hover:text-blood-600 hover:bg-blood-50 transition-colors"
+                    className="p-1.5 rounded-lg text-warm-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                     title="Sign out">
                     <LogOut size={15} />
                   </button>
@@ -151,9 +169,6 @@ export default function Navbar() {
           </div>
         )}
       </header>
-
-      {/* Notification panel */}
-      <NotificationPanel />
 
       {/* AI chatbot */}
       {showChat && <BloodTypeChat onClose={() => setShowChat(false)} />}

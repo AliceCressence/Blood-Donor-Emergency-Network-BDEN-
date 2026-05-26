@@ -658,7 +658,7 @@ export default function LandingPage() {
                 </li>
                 <li className="flex items-center gap-2">
                   <Phone size={13} className="text-blood-400" />
-                  <span>+237 6XX XXX XXX</span>
+                  <span>+237 656997810</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Globe size={13} className="text-blood-400" />
