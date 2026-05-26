@@ -1,0 +1,3 @@
+-- Legacy helper retained for reference.
+-- The active root docker-compose.yml now runs one PostgreSQL container per service:
+-- bden_auth, bden_donor, bden_request, bden_campaign, bden_notification.

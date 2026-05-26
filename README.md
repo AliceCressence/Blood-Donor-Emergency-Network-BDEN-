@@ -1,138 +1,130 @@
-# 🩸 BDEN — Blood Donor Emergency Network
+# BDEN — Blood Donor Emergency Network
 
-> Connecting donors, hospitals, and communities to make life-saving blood available when and where it matters most.
+BDEN is a React + Django REST microservices platform for coordinating emergency blood donation between voluntary donors, hospitals, and platform administrators.
 
----
+The active backend is Django REST Framework. The old Express authentication prototype is preserved under `legacy/auth-service-express/` for reference only and must not be used by the frontend.
 
-## What is BDEN?
+## Monorepo Layout
 
-BDEN is a web platform built for sub-Saharan Africa — starting with Cameroon — that solves a critical problem: during a medical emergency, finding compatible blood donors fast is nearly impossible through traditional means.
+```text
+frontend/                         React/Vite application
+services/
+  auth-service/                   Django auth, JWT, roles, hospital verification
+  donor-service/                  Django donor profile, matching, card, estimation service
+  request-service/                Django emergency request service scaffold
+  campaign-service/               Django campaign service scaffold
+  notification-service/           Django notification service scaffold
+infrastructure/
+  docker/                         Legacy Docker notes and helpers
+  nginx/                          Local API gateway
+  k8s/                            Future Kubernetes manifests
+  jenkins/                        Local Jenkins compose setup
+  prometheus/                     Future monitoring config
+legacy/auth-service-express/      Deprecated Express prototype
+docs/                             Architecture, backend, auth API, deployment notes
+```
 
-BDEN bridges that gap by connecting:
-- **Voluntary donors** who register their blood type and availability
-- **Hospitals** that post emergency blood requests in real time
-- **Communities** that can follow campaigns and spread awareness
+## Local Development
 
----
-
-## Features
-
-### Donor Portal
-- Dashboard with donation stats, eligibility tracker, and live emergency requests nearby
-- Virtual donor card with blood type, QR verification code, and donor ID
-- Real-time notifications for emergencies, campaigns, and eligibility reminders
-- Interactive map (Leaflet) showing nearby hospitals, campaigns, and emergency requests
-- Profile settings with notification preferences and privacy controls
-
-### Hospital Portal *(Phase 5 — in progress)*
-- Post emergency blood requests with urgency level and blood type
-- Manage donation campaigns
-- View donor pool statistics by blood type and city
-
-### Admin Panel *(Phase 6 — planned)*
-- Facility verification
-- Content moderation
-- Platform health monitoring
-
-### Public Pages
-- Landing page with live emergency request preview
-- Myth debunking module (WHO-sourced)
-- Campaign browser with Leaflet map
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Frontend | React 18 + Vite |
-| Styling | Tailwind CSS v3 |
-| Routing | React Router v6 |
-| Maps | Leaflet + React-Leaflet |
-| Icons | Lucide React |
-| Notifications | React Hot Toast |
-| Auth (mock) | Context API + localStorage |
-| API (planned) | Axios + Node.js backend |
-| Real-time (planned) | Socket.io |
-
----
-
-## Getting Started
-
-### Prerequisites
-- Node.js v18+
-- npm v9+
-
-### Installation
+Copy environment defaults when you need local overrides:
 
 ```bash
-git clone https://github.com/AliceCressence/Blood-Donor-Emergency-Network-BDEN-.git
-cd Blood-Donor-Emergency-Network-BDEN-
+cp .env.example .env
+```
+
+Start backend infrastructure and services:
+
+```bash
+docker compose up --build
+```
+
+The gateway listens on `http://localhost:8080`.
+
+Opening `http://localhost:8080/` returns a small JSON gateway index. The backend itself is API-first, so most useful routes are under `/api/...`, `/health/...`, and `/django-admin/...`.
+
+Useful health checks:
+
+```bash
+curl http://localhost:8080/health/auth/
+curl http://localhost:8080/health/donor/
+curl http://localhost:8080/health/request/
+curl http://localhost:8080/health/campaign/
+curl http://localhost:8080/health/notification/
+```
+
+Auth API documentation:
+
+```bash
+http://localhost:8080/api/docs/swagger/
+http://localhost:8080/api/docs/redoc/
+http://localhost:8080/api/schema.json
+```
+
+Donor API documentation:
+
+```bash
+http://localhost:8080/api/donor/docs/
+http://localhost:8080/api/donor/redoc/
+http://localhost:8002/api/docs/  # donor-service direct
+```
+
+Django admin:
+
+```bash
+http://localhost:8080/django-admin/auth/
+http://localhost:8080/django-admin/donor/
+http://localhost:8001/django-admin/  # auth-service direct
+http://localhost:8002/django-admin/  # donor-service direct
+```
+
+Run the frontend:
+
+```bash
+cd frontend
 npm install
 npm run dev
 ```
 
-Then open [http://localhost:5173](http://localhost:5173) in your browser.
+The frontend expects `VITE_API_BASE_URL=http://localhost:8080`, which is already the default in `frontend/src/services/auth.service.js`.
 
----
+For Google OAuth, configure these values in `.env` and in the Google Cloud Console OAuth client:
 
-## Project Structure
-
-```
-src/
-├── components/
-│   ├── ui/          # Button, Badge, Card, Input, Spinner...
-│   ├── layout/      # Navbar, PublicLayout, DonorLayout
-│   └── shared/      # Shared widgets
-├── pages/
-│   ├── public/      # LandingPage
-│   ├── auth/        # Login, Register
-│   ├── donor/       # Dashboard, DonorCard, Notifications, MapView, ProfileSettings
-│   ├── hospital/    # (Phase 5)
-│   └── admin/       # (Phase 6)
-├── context/         # AuthContext
-├── services/        # auth.service.js
-├── hooks/           # Custom hooks
-├── router/          # AppRouter, ProtectedRoute
-└── utils/           # Helpers and constants
+```text
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+GOOGLE_REDIRECT_URI=http://localhost:5173/auth/google/callback
+GOOGLE_AUTH_FRONTEND_CALLBACK_URL=http://localhost:5173/auth/google/callback
 ```
 
----
+## Backend Services
 
-## Build Phases
+The first implemented milestone is authentication plus the donor profile dependency needed by donor registration:
 
-| Phase | Description | Status |
-|---|---|---|
-| 1 | Design system, components, routing | ✅ Complete |
-| 2 | Landing page | ✅ Complete |
-| 3 | Auth — Login & Register | ✅ Complete |
-| 4 | Donor portal | ✅ Complete |
-| 5 | Hospital portal | 🔨 In progress |
-| 6 | Admin panel | ⏳ Planned |
-| 7 | AI chatbot, WebSockets, polish | ⏳ Planned |
+- donor registration creates an auth user and calls donor-service internally
+- donor-service manages donor profile updates, donation history, virtual donor cards, screening centers, nearby matching, and the MVP blood-type estimation chat
+- hospital registration creates an unverified hospital account pending admin approval
+- login issues SimpleJWT access and refresh tokens
+- unverified hospital login is blocked
+- admin users can list, approve, and reject hospital registrations
 
----
+Each Django service uses:
 
-## Design System
+```text
+config/settings/base.py
+config/settings/dev.py
+config/settings/prod.py
+```
 
-- **Primary color:** Blood red `#dc2626`
-- **Fonts:** Syne (display), DM Sans (body), JetBrains Mono (code/blood types)
-- **Background:** Warm cream `#faf9f7`
-- **Dark surfaces:** `#0a0a0a` / `#171717`
+## Documentation
 
----
+- [Architecture](docs/architecture.md)
+- [Backend Setup](docs/backend-setup.md)
+- [Auth API](docs/auth-api.md)
+- [Donor Service](docs/donor-service.md)
+- [Deployment Notes](docs/deployment.md)
+- [Jenkins Local Windows](docs/jenkins-local-windows.md)
+- [Jenkins Server VPS](docs/jenkins-server-vps.md)
 
-## Context
+## Status
 
-This project is being developed as a real-world solution to blood access challenges in Cameroon. The platform is designed to be inclusive — donors who don't know their blood type can still register and participate while being guided to get tested at a partner facility.
-
----
-
-## Author
-
-**Alice Cressence**  
-GitHub: [@AliceCressence](https://github.com/AliceCressence)
-
----
-
-*BDEN — Because every second counts.*
+Active development for the SEN3244 Software Architecture project.

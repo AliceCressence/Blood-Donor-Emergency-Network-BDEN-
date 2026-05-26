@@ -1,0 +1,5 @@
+services:
+  test:
+    image: alpine
+    ports:
+      - "${PORT_PREFIX:-}8001:8001"

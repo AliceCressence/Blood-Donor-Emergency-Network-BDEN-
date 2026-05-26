@@ -1,0 +1,266 @@
+services:
+  auth-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ${AUTH_DB_NAME:-bden_auth}
+      POSTGRES_USER: ${AUTH_DB_USER:-bden_user}
+      POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD:-bden_password}
+    ports:
+      - "${PORT_PREFIX:-}5432:5432"
+    volumes:
+      - auth_db_data:/var/lib/postgresql/data
+    networks:
+      - bden_network
+
+  donor-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ${DONOR_DB_NAME:-bden_donor}
+      POSTGRES_USER: ${DONOR_DB_USER:-bden_user}
+      POSTGRES_PASSWORD: ${DONOR_DB_PASSWORD:-bden_password}
+    ports:
+      - "${PORT_PREFIX:-}5433:5432"
+    volumes:
+      - donor_db_data:/var/lib/postgresql/data
+    networks:
+      - bden_network
+
+  request-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ${REQUEST_DB_NAME:-bden_request}
+      POSTGRES_USER: ${REQUEST_DB_USER:-bden_user}
+      POSTGRES_PASSWORD: ${REQUEST_DB_PASSWORD:-bden_password}
+    ports:
+      - "${PORT_PREFIX:-}5434:5432"
+    volumes:
+      - request_db_data:/var/lib/postgresql/data
+    networks:
+      - bden_network
+
+  campaign-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ${CAMPAIGN_DB_NAME:-bden_campaign}
+      POSTGRES_USER: ${CAMPAIGN_DB_USER:-bden_user}
+      POSTGRES_PASSWORD: ${CAMPAIGN_DB_PASSWORD:-bden_password}
+    ports:
+      - "${PORT_PREFIX:-}5435:5432"
+    volumes:
+      - campaign_db_data:/var/lib/postgresql/data
+    networks:
+      - bden_network
+
+  notification-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ${NOTIFICATION_DB_NAME:-bden_notification}
+      POSTGRES_USER: ${NOTIFICATION_DB_USER:-bden_user}
+      POSTGRES_PASSWORD: ${NOTIFICATION_DB_PASSWORD:-bden_password}
+    ports:
+      - "${PORT_PREFIX:-}5436:5432"
+    volumes:
+      - notification_db_data:/var/lib/postgresql/data
+    networks:
+      - bden_network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${PORT_PREFIX:-}6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - bden_network
+
+  auth-service:
+    build:
+      context: ./services/auth-service
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      DEBUG: ${DEBUG:-True}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,auth-service}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-change-me-auth}
+      AUTH_DB_NAME: ${AUTH_DB_NAME:-bden_auth}
+      AUTH_DB_USER: ${AUTH_DB_USER:-bden_user}
+      AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD:-bden_password}
+      AUTH_DB_HOST: ${AUTH_DB_HOST:-auth-db}
+      AUTH_DB_PORT: ${AUTH_DB_PORT:-5432}
+      DONOR_SERVICE_INTERNAL_URL: ${DONOR_SERVICE_INTERNAL_URL:-http://donor-service:8002}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-api-key}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:5173/auth/google/callback}
+      GOOGLE_AUTH_FRONTEND_CALLBACK_URL: ${GOOGLE_AUTH_FRONTEND_CALLBACK_URL:-http://localhost:5173/auth/google/callback}
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --no-input &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8001"
+    ports:
+      - "${PORT_PREFIX:-}8001:8001"
+    depends_on:
+      - auth-db
+      - donor-service
+      - redis
+    networks:
+      - bden_network
+
+  donor-service:
+    build:
+      context: ./services/donor-service
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      DEBUG: ${DEBUG:-True}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,donor-service}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-change-me-auth}
+      DONOR_SECRET_KEY: ${DONOR_SECRET_KEY:-change-me-donor}
+      DONOR_DB_NAME: ${DONOR_DB_NAME:-bden_donor}
+      DONOR_DB_USER: ${DONOR_DB_USER:-bden_user}
+      DONOR_DB_PASSWORD: ${DONOR_DB_PASSWORD:-bden_password}
+      DONOR_DB_HOST: ${DONOR_DB_HOST:-donor-db}
+      DONOR_DB_PORT: ${DONOR_DB_PORT:-5432}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-api-key}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      REDIS_CACHE_URL: ${REDIS_CACHE_URL:-redis://redis:6379/1}
+      AUTH_SERVICE_INTERNAL_URL: ${AUTH_SERVICE_INTERNAL_URL:-http://auth-service:8001}
+      REQUEST_SERVICE_INTERNAL_URL: ${REQUEST_SERVICE_INTERNAL_URL:-http://request-service:8003}
+      DEFAULT_MATCHING_RADIUS_KM: ${DEFAULT_MATCHING_RADIUS_KM:-30}
+      MAX_MATCHING_RADIUS_KM: ${MAX_MATCHING_RADIUS_KM:-100}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL_NAME: ${GEMINI_MODEL_NAME:-gemini-1.5-flash}
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --no-input &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8002"
+    ports:
+      - "${PORT_PREFIX:-}8002:8002"
+    depends_on:
+      - donor-db
+      - redis
+    networks:
+      - bden_network
+
+  donor-event-consumer:
+    build:
+      context: ./services/donor-service
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      DEBUG: ${DEBUG:-True}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,donor-service}
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-change-me-auth}
+      DONOR_SECRET_KEY: ${DONOR_SECRET_KEY:-change-me-donor}
+      DONOR_DB_NAME: ${DONOR_DB_NAME:-bden_donor}
+      DONOR_DB_USER: ${DONOR_DB_USER:-bden_user}
+      DONOR_DB_PASSWORD: ${DONOR_DB_PASSWORD:-bden_password}
+      DONOR_DB_HOST: ${DONOR_DB_HOST:-donor-db}
+      DONOR_DB_PORT: ${DONOR_DB_PORT:-5432}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-api-key}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      REDIS_CACHE_URL: ${REDIS_CACHE_URL:-redis://redis:6379/1}
+    command: python manage.py consume_events
+    depends_on:
+      - donor-db
+      - redis
+    restart: unless-stopped
+    networks:
+      - bden_network
+
+  request-service:
+    build:
+      context: ./services/request-service
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      DEBUG: ${DEBUG:-True}
+      REQUEST_SECRET_KEY: ${REQUEST_SECRET_KEY:-change-me-request}
+      REQUEST_DB_NAME: ${REQUEST_DB_NAME:-bden_request}
+      REQUEST_DB_USER: ${REQUEST_DB_USER:-bden_user}
+      REQUEST_DB_PASSWORD: ${REQUEST_DB_PASSWORD:-bden_password}
+      REQUEST_DB_HOST: ${REQUEST_DB_HOST:-request-db}
+      REQUEST_DB_PORT: ${REQUEST_DB_PORT:-5432}
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --no-input &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8003"
+    ports:
+      - "${PORT_PREFIX:-}8003:8003"
+    depends_on:
+      - request-db
+    networks:
+      - bden_network
+
+  campaign-service:
+    build:
+      context: ./services/campaign-service
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      DEBUG: ${DEBUG:-True}
+      CAMPAIGN_SECRET_KEY: ${CAMPAIGN_SECRET_KEY:-change-me-campaign}
+      CAMPAIGN_DB_NAME: ${CAMPAIGN_DB_NAME:-bden_campaign}
+      CAMPAIGN_DB_USER: ${CAMPAIGN_DB_USER:-bden_user}
+      CAMPAIGN_DB_PASSWORD: ${CAMPAIGN_DB_PASSWORD:-bden_password}
+      CAMPAIGN_DB_HOST: ${CAMPAIGN_DB_HOST:-campaign-db}
+      CAMPAIGN_DB_PORT: ${CAMPAIGN_DB_PORT:-5432}
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --no-input &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8004"
+    ports:
+      - "${PORT_PREFIX:-}8004:8004"
+    depends_on:
+      - campaign-db
+    networks:
+      - bden_network
+
+  notification-service:
+    build:
+      context: ./services/notification-service
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      DEBUG: ${DEBUG:-True}
+      NOTIFICATION_SECRET_KEY: ${NOTIFICATION_SECRET_KEY:-change-me-notification}
+      NOTIFICATION_DB_NAME: ${NOTIFICATION_DB_NAME:-bden_notification}
+      NOTIFICATION_DB_USER: ${NOTIFICATION_DB_USER:-bden_user}
+      NOTIFICATION_DB_PASSWORD: ${NOTIFICATION_DB_PASSWORD:-bden_password}
+      NOTIFICATION_DB_HOST: ${NOTIFICATION_DB_HOST:-notification-db}
+      NOTIFICATION_DB_PORT: ${NOTIFICATION_DB_PORT:-5432}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --no-input &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8005"
+    ports:
+      - "${PORT_PREFIX:-}8005:8005"
+    depends_on:
+      - notification-db
+      - redis
+    networks:
+      - bden_network
+
+  nginx:
+    build:
+      context: ./infrastructure/nginx
+    ports:
+      - "${PORT_PREFIX:-}8080:80"
+    depends_on:
+      - auth-service
+      - donor-service
+      - request-service
+      - campaign-service
+      - notification-service
+    networks:
+      - bden_network
+
+volumes:
+  auth_db_data:
+  donor_db_data:
+  request_db_data:
+  campaign_db_data:
+  notification_db_data:
+  redis_data:
+
+networks:
+  bden_network:
+    driver: bridge
