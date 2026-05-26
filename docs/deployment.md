@@ -8,7 +8,7 @@ The production target is a low-cost VPS such as AWS Lightsail running Docker now
 - Django services run as independent containers.
 - Each service owns its own PostgreSQL database.
 - Redis supports event publication and later Celery task queues.
-- Jenkins will build images and deploy them to the VPS/K3s cluster.
+- Jenkins currently runs checkout, syntax checks, auth/donor tests, frontend build, and Compose validation. Image build/push and deployment are placeholders until the VPS/K3s target is ready.
 - Prometheus and Grafana will collect service health and performance metrics.
 
 ## Production Settings
@@ -38,8 +38,20 @@ Auth-service exposes OpenAPI documentation with drf-yasg:
 /api/schema.json
 ```
 
+Donor-service exposes OpenAPI documentation with drf-yasg:
+
+```text
+/api/donor/docs/
+/api/donor/redoc/
+```
+
 In production these should remain behind the gateway. If the public deployment should not expose interactive docs, restrict them at Nginx or with service permissions before launch.
 
 ## Kubernetes Direction
 
 The intended K3s production namespace is `bden-prod`. Each Django service should become a Deployment with a ClusterIP Service. Only the Nginx gateway should be publicly reachable.
+
+## Jenkins References
+
+- Local Windows/Docker setup: [Jenkins Local Setup on Windows](jenkins-local-windows.md)
+- VPS setup path: [Jenkins Server Setup on VPS](jenkins-server-vps.md)

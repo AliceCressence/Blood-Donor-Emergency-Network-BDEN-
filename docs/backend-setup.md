@@ -27,6 +27,7 @@ The Compose stack starts:
 - five PostgreSQL containers
 - Redis
 - five Django service containers
+- one donor event consumer container
 - Nginx gateway on `localhost:8080`
 
 `http://localhost:8080/` is a gateway index, not a Django app page. Use these routes while developing:
@@ -35,6 +36,7 @@ The Compose stack starts:
 curl http://localhost:8080/
 curl http://localhost:8080/health/auth/
 curl http://localhost:8080/api/docs/swagger/
+curl http://localhost:8080/api/donor/docs/
 ```
 
 ## Run Migrations Manually
@@ -46,13 +48,31 @@ docker compose run --rm auth-service python manage.py migrate
 docker compose run --rm donor-service python manage.py migrate
 ```
 
+Seed donor screening centers:
+
+```bash
+docker compose run --rm donor-service python manage.py seed_screening_centers
+```
+
 Create an admin user:
 
 ```bash
 docker compose run --rm auth-service python manage.py createsuperuser
 ```
 
-The auth admin is available at `http://localhost:8080/django-admin/auth/` or directly at `http://localhost:8001/django-admin/`. Donor admin is available directly at `http://localhost:8002/django-admin/`.
+The auth admin is available at `http://localhost:8080/django-admin/auth/` or directly at `http://localhost:8001/django-admin/`. Donor admin is available at `http://localhost:8080/django-admin/donor/` or directly at `http://localhost:8002/django-admin/`.
+
+## Donor Service Reset Note
+
+The previous lightweight donor `profiles` app has been replaced by `donors` and `estimation`. There is no production donor database yet, so local developers with old donor volumes should reset the donor database volume before migrating:
+
+```bash
+docker compose down
+docker volume rm blood-donor-emergency-network-bden-_donor_db_data
+docker compose up --build donor-service
+```
+
+WhiteNoise is configured directly in each Django service. The old root `apply_whitenoise.py` helper is no longer needed.
 
 ## Run Tests
 

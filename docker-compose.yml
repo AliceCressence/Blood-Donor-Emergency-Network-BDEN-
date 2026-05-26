@@ -115,6 +115,7 @@ services:
       DEBUG: ${DEBUG:-True}
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,donor-service}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-change-me-auth}
       DONOR_SECRET_KEY: ${DONOR_SECRET_KEY:-change-me-donor}
       DONOR_DB_NAME: ${DONOR_DB_NAME:-bden_donor}
       DONOR_DB_USER: ${DONOR_DB_USER:-bden_user}
@@ -122,6 +123,14 @@ services:
       DONOR_DB_HOST: ${DONOR_DB_HOST:-donor-db}
       DONOR_DB_PORT: ${DONOR_DB_PORT:-5432}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-api-key}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      REDIS_CACHE_URL: ${REDIS_CACHE_URL:-redis://redis:6379/1}
+      AUTH_SERVICE_INTERNAL_URL: ${AUTH_SERVICE_INTERNAL_URL:-http://auth-service:8001}
+      REQUEST_SERVICE_INTERNAL_URL: ${REQUEST_SERVICE_INTERNAL_URL:-http://request-service:8003}
+      DEFAULT_MATCHING_RADIUS_KM: ${DEFAULT_MATCHING_RADIUS_KM:-30}
+      MAX_MATCHING_RADIUS_KM: ${MAX_MATCHING_RADIUS_KM:-100}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL_NAME: ${GEMINI_MODEL_NAME:-gemini-1.5-flash}
     command: >
       sh -c "python manage.py migrate &&
              python manage.py collectstatic --no-input &&
@@ -130,6 +139,32 @@ services:
       - "8002:8002"
     depends_on:
       - donor-db
+      - redis
+    networks:
+      - bden_network
+
+  donor-event-consumer:
+    build:
+      context: ./services/donor-service
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      DEBUG: ${DEBUG:-True}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,donor-service}
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-change-me-auth}
+      DONOR_SECRET_KEY: ${DONOR_SECRET_KEY:-change-me-donor}
+      DONOR_DB_NAME: ${DONOR_DB_NAME:-bden_donor}
+      DONOR_DB_USER: ${DONOR_DB_USER:-bden_user}
+      DONOR_DB_PASSWORD: ${DONOR_DB_PASSWORD:-bden_password}
+      DONOR_DB_HOST: ${DONOR_DB_HOST:-donor-db}
+      DONOR_DB_PORT: ${DONOR_DB_PORT:-5432}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-api-key}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      REDIS_CACHE_URL: ${REDIS_CACHE_URL:-redis://redis:6379/1}
+    command: python manage.py consume_events
+    depends_on:
+      - donor-db
+      - redis
+    restart: unless-stopped
     networks:
       - bden_network
 

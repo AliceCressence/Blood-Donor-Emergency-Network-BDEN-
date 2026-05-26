@@ -10,7 +10,7 @@ The active backend is Django REST Framework. The old Express authentication prot
 frontend/                         React/Vite application
 services/
   auth-service/                   Django auth, JWT, roles, hospital verification
-  donor-service/                  Django donor profile service
+  donor-service/                  Django donor profile, matching, card, estimation service
   request-service/                Django emergency request service scaffold
   campaign-service/               Django campaign service scaffold
   notification-service/           Django notification service scaffold
@@ -18,7 +18,7 @@ infrastructure/
   docker/                         Legacy Docker notes and helpers
   nginx/                          Local API gateway
   k8s/                            Future Kubernetes manifests
-  jenkins/                        Future Jenkins pipeline assets
+  jenkins/                        Local Jenkins compose setup
   prometheus/                     Future monitoring config
 legacy/auth-service-express/      Deprecated Express prototype
 docs/                             Architecture, backend, auth API, deployment notes
@@ -60,10 +60,19 @@ http://localhost:8080/api/docs/redoc/
 http://localhost:8080/api/schema.json
 ```
 
+Donor API documentation:
+
+```bash
+http://localhost:8080/api/donor/docs/
+http://localhost:8080/api/donor/redoc/
+http://localhost:8002/api/docs/  # donor-service direct
+```
+
 Django admin:
 
 ```bash
 http://localhost:8080/django-admin/auth/
+http://localhost:8080/django-admin/donor/
 http://localhost:8001/django-admin/  # auth-service direct
 http://localhost:8002/django-admin/  # donor-service direct
 ```
@@ -92,6 +101,7 @@ GOOGLE_AUTH_FRONTEND_CALLBACK_URL=http://localhost:5173/auth/google/callback
 The first implemented milestone is authentication plus the donor profile dependency needed by donor registration:
 
 - donor registration creates an auth user and calls donor-service internally
+- donor-service manages donor profile updates, donation history, virtual donor cards, screening centers, nearby matching, and the MVP blood-type estimation chat
 - hospital registration creates an unverified hospital account pending admin approval
 - login issues SimpleJWT access and refresh tokens
 - unverified hospital login is blocked
@@ -110,7 +120,10 @@ config/settings/prod.py
 - [Architecture](docs/architecture.md)
 - [Backend Setup](docs/backend-setup.md)
 - [Auth API](docs/auth-api.md)
+- [Donor Service](docs/donor-service.md)
 - [Deployment Notes](docs/deployment.md)
+- [Jenkins Local Windows](docs/jenkins-local-windows.md)
+- [Jenkins Server VPS](docs/jenkins-server-vps.md)
 
 ## Status
 

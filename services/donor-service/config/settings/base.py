@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -14,17 +15,22 @@ DEBUG = os.environ.get("DEBUG", "False") == "True"
 ALLOWED_HOSTS = [host.strip() for host in os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if host.strip()]
 
 INSTALLED_APPS = [
-    "django_prometheus",
     "unfold",
+    "unfold.contrib.filters",
+    "unfold.contrib.forms",
+    "django_prometheus",
     "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "django.contrib.contenttypes",
-    "django.contrib.auth",
     "rest_framework",
+    "rest_framework_simplejwt",
     "corsheaders",
-    "profiles",
+    "drf_yasg",
+    "donors",
+    "estimation",
 ]
 
 MIDDLEWARE = [
@@ -36,6 +42,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 
@@ -70,11 +77,57 @@ DATABASES = {
 }
 
 REST_FRAMEWORK = {
-    "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "donors.authentication.ServiceJWTAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
+    ],
+}
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=int(os.environ.get("ACCESS_TOKEN_LIFETIME_MINUTES", 60))),
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": os.environ.get("AUTH_SECRET_KEY", "change-me-auth"),
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "USER_ID_CLAIM": "user_id",
+}
+
+SWAGGER_SETTINGS = {
+    "SECURITY_DEFINITIONS": {
+        "Bearer": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header",
+            "description": "JWT authorization header using the Bearer scheme. Example: Bearer <token>",
+        }
+    },
+    "USE_SESSION_AUTH": False,
+    "DOC_EXPANSION": "none",
+    "DEFAULT_MODEL_RENDERING": "example",
+}
+
+UNFOLD = {
+    "SITE_TITLE": "BDEN Donor Service Admin",
+    "SITE_HEADER": "Blood Donor Emergency Network",
+    "SITE_SYMBOL": "favorite",
 }
 
 CORS_ALLOWED_ORIGINS = [origin.strip() for origin in os.environ.get("FRONTEND_URL", "http://localhost:5173").split(",") if origin.strip()]
+CORS_ALLOW_CREDENTIALS = True
+
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_MODEL_NAME = os.environ.get("GEMINI_MODEL_NAME", "gemini-1.5-flash")
+REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/0")
+REDIS_CACHE_URL = os.environ.get("REDIS_CACHE_URL", "redis://redis:6379/1")
+AUTH_SERVICE_INTERNAL_URL = os.environ.get("AUTH_SERVICE_INTERNAL_URL", "http://auth-service:8001")
+REQUEST_SERVICE_INTERNAL_URL = os.environ.get("REQUEST_SERVICE_INTERNAL_URL", "http://request-service:8003")
 INTERNAL_API_KEY = os.environ.get("INTERNAL_API_KEY", "dev-internal-api-key")
+DEFAULT_MATCHING_RADIUS_KM = int(os.environ.get("DEFAULT_MATCHING_RADIUS_KM", 30))
+MAX_MATCHING_RADIUS_KM = int(os.environ.get("MAX_MATCHING_RADIUS_KM", 100))
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LANGUAGE_CODE = "en-us"
@@ -82,6 +135,4 @@ TIME_ZONE = "Africa/Douala"
 USE_I18N = True
 USE_TZ = True
 STATIC_URL = "/static/"
-
-STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_ROOT = BASE_DIR / "staticfiles"
