@@ -16,6 +16,8 @@ import Login    from '../pages/auth/Login'
 import Register from '../pages/auth/Register'
 import GoogleCallback from '../pages/auth/GoogleCallback'
 
+import ProtectedRoute from './ProtectedRoute'
+
 // Donor pages
 import DonorDashboard  from '../pages/donor/Dashboard'
 import DonorCard       from '../pages/donor/DonorCard'
@@ -51,31 +53,37 @@ export default function AppRouter() {
         <Route path="/auth/google/callback" element={<GoogleCallback />} />
 
         {/* Donor portal */}
-        <Route element={<DonorLayout />}>
-          <Route path="/donor"               element={<Navigate to="/donor/dashboard" replace />} />
-          <Route path="/donor/dashboard"     element={<DonorDashboard />} />
-          <Route path="/donor/card"          element={<DonorCard />} />
-          <Route path="/donor/notifications" element={<Notifications />} />
-          <Route path="/donor/map"           element={<MapView />} />
-          <Route path="/donor/profile"       element={<ProfileSettings />} />
+        <Route element={<ProtectedRoute allowedRoles={['donor']} />}>
+          <Route element={<DonorLayout />}>
+            <Route path="/donor"               element={<Navigate to="/donor/dashboard" replace />} />
+            <Route path="/donor/dashboard"     element={<DonorDashboard />} />
+            <Route path="/donor/card"          element={<DonorCard />} />
+            <Route path="/donor/notifications" element={<Notifications />} />
+            <Route path="/donor/map"           element={<MapView />} />
+            <Route path="/donor/profile"       element={<ProfileSettings />} />
+          </Route>
         </Route>
 
         {/* Hospital portal */}
-        <Route element={<HospitalLayout />}>
-          <Route path="/hospital"           element={<Navigate to="/hospital/dashboard" replace />} />
-          <Route path="/hospital/dashboard" element={<HospitalDashboard />} />
-          <Route path="/hospital/emergency" element={<EmergencyRequest />} />
-          <Route path="/hospital/campaigns" element={<CampaignManager />} />
-          <Route path="/hospital/donors"    element={<DonorPool />} />
+        <Route element={<ProtectedRoute allowedRoles={['hospital']} />}>
+          <Route element={<HospitalLayout />}>
+            <Route path="/hospital"           element={<Navigate to="/hospital/dashboard" replace />} />
+            <Route path="/hospital/dashboard" element={<HospitalDashboard />} />
+            <Route path="/hospital/emergency" element={<EmergencyRequest />} />
+            <Route path="/hospital/campaigns" element={<CampaignManager />} />
+            <Route path="/hospital/donors"    element={<DonorPool />} />
+          </Route>
         </Route>
 
         {/* Admin panel */}
-        <Route element={<AdminLayout />}>
-          <Route path="/admin"              element={<Navigate to="/admin/dashboard" replace />} />
-          <Route path="/admin/dashboard"    element={<AdminDashboard />} />
-          <Route path="/admin/verification" element={<FacilityVerification />} />
-          <Route path="/admin/moderation"   element={<ContentModeration />} />
-          <Route path="/admin/health"       element={<PlatformHealth />} />
+        <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+          <Route element={<AdminLayout />}>
+            <Route path="/admin"              element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="/admin/dashboard"    element={<AdminDashboard />} />
+            <Route path="/admin/verification" element={<FacilityVerification />} />
+            <Route path="/admin/moderation"   element={<ContentModeration />} />
+            <Route path="/admin/health"       element={<PlatformHealth />} />
+          </Route>
         </Route>
 
         {/* 404 — catches any unknown URL */}
