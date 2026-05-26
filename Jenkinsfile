@@ -11,6 +11,7 @@ pipeline {
         COMPOSE_PROJECT_NAME = 'bden-ci'
         DJANGO_SETTINGS_MODULE = 'config.settings.dev'
         VITE_API_BASE_URL = 'http://localhost:8080'
+        PORT_PREFIX = '1'
     }
 
     stages {

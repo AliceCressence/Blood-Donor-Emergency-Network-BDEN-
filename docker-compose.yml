@@ -6,7 +6,7 @@ services:
       POSTGRES_USER: ${AUTH_DB_USER:-bden_user}
       POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD:-bden_password}
     ports:
-      - "5432:5432"
+      - "${PORT_PREFIX:-}5432:5432"
     volumes:
       - auth_db_data:/var/lib/postgresql/data
     networks:
@@ -19,7 +19,7 @@ services:
       POSTGRES_USER: ${DONOR_DB_USER:-bden_user}
       POSTGRES_PASSWORD: ${DONOR_DB_PASSWORD:-bden_password}
     ports:
-      - "5433:5432"
+      - "${PORT_PREFIX:-}5433:5432"
     volumes:
       - donor_db_data:/var/lib/postgresql/data
     networks:
@@ -32,7 +32,7 @@ services:
       POSTGRES_USER: ${REQUEST_DB_USER:-bden_user}
       POSTGRES_PASSWORD: ${REQUEST_DB_PASSWORD:-bden_password}
     ports:
-      - "5434:5432"
+      - "${PORT_PREFIX:-}5434:5432"
     volumes:
       - request_db_data:/var/lib/postgresql/data
     networks:
@@ -45,7 +45,7 @@ services:
       POSTGRES_USER: ${CAMPAIGN_DB_USER:-bden_user}
       POSTGRES_PASSWORD: ${CAMPAIGN_DB_PASSWORD:-bden_password}
     ports:
-      - "5435:5432"
+      - "${PORT_PREFIX:-}5435:5432"
     volumes:
       - campaign_db_data:/var/lib/postgresql/data
     networks:
@@ -58,7 +58,7 @@ services:
       POSTGRES_USER: ${NOTIFICATION_DB_USER:-bden_user}
       POSTGRES_PASSWORD: ${NOTIFICATION_DB_PASSWORD:-bden_password}
     ports:
-      - "5436:5432"
+      - "${PORT_PREFIX:-}5436:5432"
     volumes:
       - notification_db_data:/var/lib/postgresql/data
     networks:
@@ -67,7 +67,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "${PORT_PREFIX:-}6379:6379"
     volumes:
       - redis_data:/data
     networks:
@@ -99,7 +99,7 @@ services:
              python manage.py collectstatic --no-input &&
              gunicorn config.wsgi:application --bind 0.0.0.0:8001"
     ports:
-      - "8001:8001"
+      - "${PORT_PREFIX:-}8001:8001"
     depends_on:
       - auth-db
       - donor-service
@@ -136,7 +136,7 @@ services:
              python manage.py collectstatic --no-input &&
              gunicorn config.wsgi:application --bind 0.0.0.0:8002"
     ports:
-      - "8002:8002"
+      - "${PORT_PREFIX:-}8002:8002"
     depends_on:
       - donor-db
       - redis
@@ -185,7 +185,7 @@ services:
              python manage.py collectstatic --no-input &&
              gunicorn config.wsgi:application --bind 0.0.0.0:8003"
     ports:
-      - "8003:8003"
+      - "${PORT_PREFIX:-}8003:8003"
     depends_on:
       - request-db
     networks:
@@ -208,7 +208,7 @@ services:
              python manage.py collectstatic --no-input &&
              gunicorn config.wsgi:application --bind 0.0.0.0:8004"
     ports:
-      - "8004:8004"
+      - "${PORT_PREFIX:-}8004:8004"
     depends_on:
       - campaign-db
     networks:
@@ -232,7 +232,7 @@ services:
              python manage.py collectstatic --no-input &&
              gunicorn config.wsgi:application --bind 0.0.0.0:8005"
     ports:
-      - "8005:8005"
+      - "${PORT_PREFIX:-}8005:8005"
     depends_on:
       - notification-db
       - redis
@@ -243,7 +243,7 @@ services:
     build:
       context: ./infrastructure/nginx
     ports:
-      - "8080:80"
+      - "${PORT_PREFIX:-}8080:80"
     depends_on:
       - auth-service
       - donor-service
