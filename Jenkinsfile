@@ -23,7 +23,7 @@ pipeline {
 
         stage('Backend Syntax Checks') {
             steps {
-                sh 'python -m compileall services/auth-service services/donor-service services/request-service services/campaign-service services/notification-service'
+                sh 'python3 -m compileall services/auth-service services/donor-service services/request-service services/campaign-service services/notification-service'
             }
         }
 

@@ -1,6 +1,6 @@
 services:
   jenkins:
-    image: jenkins/jenkins:lts-jdk17
+    build: .
     container_name: bden-jenkins
     restart: unless-stopped
     user: root
