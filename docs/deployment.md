@@ -1,6 +1,6 @@
 # Deployment Notes
 
-The production target is a low-cost VPS such as AWS Lightsail running Docker now and K3s/Kubernetes later.
+The production target is an AWS Lightsail VPS running K3s/Kubernetes for orchestration, with host Nginx as the public reverse proxy. The detailed server setup guide is [BDEN VPS Configuration Guide](vps_config.md).
 
 ## MVP Deployment Shape
 
@@ -8,7 +8,7 @@ The production target is a low-cost VPS such as AWS Lightsail running Docker now
 - Django services run as independent containers.
 - Each service owns its own PostgreSQL database.
 - Redis supports event publication and later Celery task queues.
-- Jenkins currently runs checkout, syntax checks, auth/donor tests, frontend build, and Compose validation. Image build/push and deployment are placeholders until the VPS/K3s target is ready.
+- Jenkins currently runs checkout, syntax checks, auth/donor tests, frontend build, and Compose validation locally. The VPS guide defines the production path for native Jenkins on Ubuntu, Kubernetes deployment, host Nginx, SSL, webhooks, and health checks.
 - Prometheus and Grafana will collect service health and performance metrics.
 
 ## Production Settings
@@ -55,3 +55,4 @@ The intended K3s production namespace is `bden-prod`. Each Django service should
 
 - Local Windows/Docker setup: [Jenkins Local Setup on Windows](jenkins-local-windows.md)
 - VPS setup path: [Jenkins Server Setup on VPS](jenkins-server-vps.md)
+- Full Lightsail production guide: [BDEN VPS Configuration Guide](vps_config.md)

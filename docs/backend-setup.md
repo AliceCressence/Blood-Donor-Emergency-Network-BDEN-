@@ -28,15 +28,15 @@ The Compose stack starts:
 - Redis
 - five Django service containers
 - one donor event consumer container
-- Nginx gateway on `localhost:8080`
+- Nginx gateway on `localhost:8000`
 
-`http://localhost:8080/` is a gateway index, not a Django app page. Use these routes while developing:
+`http://localhost:8000/` is a gateway index, not a Django app page. Use these routes while developing:
 
 ```bash
-curl http://localhost:8080/
-curl http://localhost:8080/health/auth/
-curl http://localhost:8080/api/docs/swagger/
-curl http://localhost:8080/api/donor/docs/
+curl http://localhost:8000/
+curl http://localhost:8000/health/auth/
+curl http://localhost:8000/api/docs/swagger/
+curl http://localhost:8000/api/donor/docs/
 ```
 
 ## Run Migrations Manually
@@ -60,7 +60,7 @@ Create an admin user:
 docker compose run --rm auth-service python manage.py createsuperuser
 ```
 
-The auth admin is available at `http://localhost:8080/django-admin/auth/` or directly at `http://localhost:8001/django-admin/`. Donor admin is available at `http://localhost:8080/django-admin/donor/` or directly at `http://localhost:8002/django-admin/`.
+The auth admin is available at `http://localhost:8000/django-admin/auth/` or directly at `http://localhost:8001/django-admin/`. Donor admin is available at `http://localhost:8000/django-admin/donor/` or directly at `http://localhost:8002/django-admin/`.
 
 ## Donor Service Reset Note
 
