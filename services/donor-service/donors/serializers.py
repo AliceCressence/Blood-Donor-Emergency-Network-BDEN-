@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import AvailabilityStatus, BloodType, DonationRecord, DonorProfile, ScreeningCenter
+from .models import AvailabilityStatus, BloodType, DonationRecord, DonorProfile, Gender, ScreeningCenter
 
 
 class DonorProfileSerializer(serializers.ModelSerializer):
@@ -12,7 +12,7 @@ class DonorProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = DonorProfile
         fields = [
-            "id", "user_id", "first_name", "last_name", "full_name", "phone", "date_of_birth",
+            "id", "user_id", "first_name", "last_name", "full_name", "gender", "phone", "date_of_birth",
             "blood_type", "blood_type_verified", "blood_type_estimated", "latitude", "longitude",
             "city", "region", "availability_status", "last_donation_date", "total_donations",
             "total_volume_ml", "is_eligible_to_donate", "days_until_eligible", "next_eligible_date",
@@ -36,6 +36,7 @@ class DonorProfileSerializer(serializers.ModelSerializer):
 class UpdateProfileSerializer(serializers.Serializer):
     first_name = serializers.CharField(max_length=100, required=False)
     last_name = serializers.CharField(max_length=100, required=False)
+    gender = serializers.ChoiceField(choices=Gender.choices, required=False)
     phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
     date_of_birth = serializers.DateField(required=False, allow_null=True)
     latitude = serializers.FloatField(required=False, allow_null=True, min_value=-90, max_value=90)

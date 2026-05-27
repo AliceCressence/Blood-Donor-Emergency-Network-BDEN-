@@ -1,17 +1,19 @@
 // src/pages/donor/DonorProfile.jsx
 import { useState, useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   User, Phone, MapPin, Save, CheckCircle,
   Mail, Shield, AlertTriangle, X, Trash2, UserX, Venus, Mars, CircleDashed,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 
-const BLOOD_TYPES = ['A+', 'A⁻', 'B+', 'B⁻', 'AB+', 'AB⁻', 'O+', 'O⁻']
+const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
 
 const GENDER_OPTIONS = [
-  { value: 'male',   label: 'Male',   icon: Mars          },
-  { value: 'female', label: 'Female', icon: Venus         },
-  { value: 'other',  label: 'Other',  icon: CircleDashed  },
+  { value: 'MALE',   label: 'Male',   icon: Mars          },
+  { value: 'FEMALE', label: 'Female', icon: Venus         },
+  { value: 'OTHER',  label: 'Other',  icon: CircleDashed  },
+  { value: 'PREFER_NOT_TO_SAY', label: 'Skip', icon: CircleDashed },
 ]
 
 // Auth provider display config
@@ -57,7 +59,7 @@ function DangerModal({ action, onConfirm, onCancel }) {
   const Icon = config.icon
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center">
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onCancel} />
       <div className="relative bg-white rounded-3xl shadow-2xl p-8 max-w-sm w-full mx-4">
         <button
@@ -114,8 +116,12 @@ function DangerModal({ action, onConfirm, onCancel }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function DonorProfile() {
   const { user, updateUser, logout } = useAuth()
+  const [params] = useSearchParams()
   const [saved, setSaved]           = useState(false)
+  const [saving, setSaving]         = useState(false)
+  const [saveError, setSaveError]   = useState('')
   const [dangerAction, setDangerAction] = useState(null) // 'deactivate' | 'delete'
+  const completingSetup = params.get('complete') === '1'
 
   const initial = useMemo(() => ({
     name:      user?.name      || '',
@@ -136,11 +142,19 @@ export default function DonorProfile() {
     [form, initial]
   )
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!hasChanges) return
-    updateUser(form)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 3000)
+    setSaving(true)
+    setSaveError('')
+    try {
+      await updateUser(form)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } catch (err) {
+      setSaveError(err.message || 'We could not save those changes yet.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleDangerConfirm = () => {
@@ -169,10 +183,25 @@ export default function DonorProfile() {
         </div>
 
         {/* Success banner */}
+        {completingSetup && (
+          <div className="flex items-start gap-3 p-4 rounded-2xl bg-blue-50 border border-blue-200">
+            <Shield size={17} className="text-blue-600 mt-0.5" />
+            <div>
+              <p className="text-sm text-blue-900 font-semibold">Just one last bit before the dashboard</p>
+              <p className="text-xs text-blue-700 mt-0.5">Google got you signed in. Add your phone, city, and blood type so hospitals can match you correctly.</p>
+            </div>
+          </div>
+        )}
         {saved && (
           <div className="flex items-center gap-2 p-4 rounded-2xl bg-teal-50 border border-teal-200">
             <CheckCircle size={16} className="text-teal-600" />
             <p className="text-sm text-teal-800 font-medium">Profile updated successfully!</p>
+          </div>
+        )}
+        {saveError && (
+          <div className="flex items-center gap-2 p-4 rounded-2xl bg-red-50 border border-red-200">
+            <AlertTriangle size={16} className="text-red-600" />
+            <p className="text-sm text-red-800 font-medium">{saveError}</p>
           </div>
         )}
 
@@ -313,12 +342,12 @@ export default function DonorProfile() {
           {/* Save button — disabled when no changes */}
           <button
             onClick={handleSave}
-            disabled={!hasChanges}
+            disabled={!hasChanges || saving}
             className={`btn-primary w-full py-3 justify-center transition-all ${
-              !hasChanges ? 'opacity-40 cursor-not-allowed' : ''
+              !hasChanges || saving ? 'opacity-40 cursor-not-allowed' : ''
             }`}
           >
-            <Save size={16} /> Save changes
+            <Save size={16} /> {saving ? 'Saving...' : 'Save changes'}
           </button>
           {!hasChanges && (
             <p className="text-center text-xs text-neutral-400">No changes to save yet</p>

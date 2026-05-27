@@ -17,6 +17,7 @@ export default function GoogleCallback() {
       .then((user) => {
         if (user.role === 'admin') navigate('/admin/dashboard', { replace: true })
         else if (user.role === 'hospital') navigate('/hospital/dashboard', { replace: true })
+        else if (user.profileComplete === false || !user.phone || !user.city || !user.bloodType || user.bloodType === 'UNKNOWN') navigate('/donor/profile?complete=1', { replace: true })
         else navigate('/donor/dashboard', { replace: true })
       })
       .catch((err) => {

@@ -12,10 +12,17 @@ class User(AbstractBaseUser, PermissionsMixin):
         HOSPITAL = "HOSPITAL", "Hospital"
         ADMIN = "ADMIN", "Admin"
 
+    class Gender(models.TextChoices):
+        MALE = "MALE", "Male"
+        FEMALE = "FEMALE", "Female"
+        OTHER = "OTHER", "Other"
+        PREFER_NOT_TO_SAY = "PREFER_NOT_TO_SAY", "Prefer not to say"
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True, db_index=True)
     password = models.CharField(max_length=128, null=True, blank=True)
     role = models.CharField(max_length=10, choices=Role.choices)
+    gender = models.CharField(max_length=20, choices=Gender.choices, blank=True, default="")
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     is_verified = models.BooleanField(default=False)
@@ -47,6 +54,10 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def is_admin_user(self):
         return self.role == self.Role.ADMIN
+
+    @property
+    def auth_provider(self):
+        return "google" if self.google_id else "email"
 
 
 class HospitalRegistration(models.Model):

@@ -23,7 +23,7 @@ import DonorDashboard  from '../pages/donor/Dashboard'
 import DonorCard       from '../pages/donor/DonorCard'
 import Notifications   from '../pages/donor/Notifications'
 import MapView         from '../pages/donor/MapView'
-import ProfileSettings from '../pages/donor/ProfileSettings'
+import DonorProfile    from '../pages/donor/DonorProfile'
 
 // Hospital pages
 import HospitalDashboard from '../pages/hospital/HospitalDashboard'
@@ -60,7 +60,7 @@ export default function AppRouter() {
             <Route path="/donor/card"          element={<DonorCard />} />
             <Route path="/donor/notifications" element={<Notifications />} />
             <Route path="/donor/map"           element={<MapView />} />
-            <Route path="/donor/profile"       element={<ProfileSettings />} />
+            <Route path="/donor/profile"       element={<DonorProfile />} />
           </Route>
         </Route>
 

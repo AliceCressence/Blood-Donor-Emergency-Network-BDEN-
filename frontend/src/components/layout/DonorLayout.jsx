@@ -17,14 +17,14 @@ import { useAuth } from '../../context/AuthContext'
 const navItems = [
   { path: '/donor/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/donor/card',      icon: CreditCard,      label: 'My Card'   },
-  { path: '/donor/map',       icon: MapPin,           label: 'Nearby Map'},
+  { path: '/donor/map',       icon: MapPin,           label: 'Nearby Needs'},
   { path: '/donor/notifications', icon: Bell,         label: 'Notifications' },
 ]
 
 // ─── Sign-out confirmation modal ─────────────────────────────────────────────
 function SignOutModal({ onConfirm, onCancel }) {
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center">
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/30 backdrop-blur-sm"
@@ -80,6 +80,7 @@ export default function DonorLayout() {
   const { user, logout }                = useAuth()
   const navigate                        = useNavigate()
   const location                        = useLocation()
+  const isMapView                       = location.pathname === '/donor/map'
 
   // Close drop-up on outside click
   useEffect(() => {
@@ -102,33 +103,35 @@ export default function DonorLayout() {
 
   return (
     <>
-      <div className="flex h-screen bg-warm-50">
+      <div className="min-h-screen bg-warm-50">
 
         {/* ── Sidebar ────────────────────────────────────────────────────── */}
         <div
           className={`
-            fixed left-0 top-0 h-screen bg-white border-r border-warm-200 shadow-xl
-            transition-all duration-300 ease-in-out z-50 flex flex-col
+            fixed left-4 top-4 bottom-4 bg-white/90 border border-white/70 shadow-2xl
+            backdrop-blur-xl transition-[width,transform,border-radius,box-shadow] duration-500
+            ease-[cubic-bezier(0.22,1,0.36,1)] z-[600] flex flex-col rounded-[28px]
             ${collapsed
-              /* Collapsed: narrow floating panel */
-              ? 'w-16 rounded-r-2xl shadow-2xl'
-              /* Expanded: standard sidebar */
-              : 'w-64'
+              ? 'w-[76px]'
+              : 'w-[264px]'
             }
           `}
         >
           {/* Logo + collapse toggle */}
-          <div className="flex items-center justify-between px-3 py-4 border-b border-warm-100 flex-shrink-0">
-            {!collapsed && (
-              <span className="font-display font-bold text-xl text-blood-600 pl-1">BDEN</span>
-            )}
-            {collapsed && (
-              <span className="font-display font-bold text-lg text-blood-600 mx-auto">B</span>
-            )}
+          <div className={`flex items-center px-3 py-4 border-b border-warm-100/80 flex-shrink-0 ${collapsed ? 'justify-center' : 'justify-between'}`}>
+            <Link to="/donor/dashboard" className={`flex items-center gap-2 min-w-0 ${collapsed ? 'justify-center' : ''}`}>
+              <img src="/favicon.svg" alt="BDEN" className="w-10 h-10 rounded-2xl shadow-sm" />
+              {!collapsed && (
+                <div className="min-w-0">
+                  <span className="block font-display font-bold text-lg leading-tight text-blood-600">BDEN</span>
+                  <span className="block text-[10px] uppercase tracking-wide text-warm-400">Donor portal</span>
+                </div>
+              )}
+            </Link>
             {!collapsed && (
               <button
                 onClick={() => setCollapsed(true)}
-                className="p-2 rounded-lg hover:bg-warm-100 transition-colors text-warm-500 cursor-pointer"
+                className="p-2 rounded-full hover:bg-warm-100 hover:text-blood-600 transition-colors text-warm-500 cursor-pointer"
                 title="Collapse sidebar"
               >
                 <ChevronLeft size={18} />
@@ -140,7 +143,7 @@ export default function DonorLayout() {
           {collapsed && (
             <button
               onClick={() => setCollapsed(false)}
-              className="mx-auto mt-3 mb-1 p-2 rounded-lg hover:bg-warm-100 transition-colors text-warm-500 cursor-pointer"
+              className="mx-auto mt-3 mb-1 p-2 rounded-full bg-warm-50 hover:bg-blood-50 hover:text-blood-600 transition-colors text-warm-500 cursor-pointer"
               title="Expand sidebar"
             >
               <ChevronRight size={18} />
@@ -155,12 +158,12 @@ export default function DonorLayout() {
                 to={item.path}
                 title={collapsed ? item.label : ''}
                 className={`
-                  flex items-center gap-3 px-3 py-2.5 rounded-xl
-                  transition-all duration-200 group
-                  ${collapsed ? 'justify-center' : ''}
+                  flex items-center gap-3 px-3 py-2.5 rounded-2xl
+                  transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group
+                  ${collapsed ? 'justify-center w-12 h-12 mx-auto px-0 py-0' : ''}
                   ${isActive(item.path)
-                    ? 'bg-blood-50 text-blood-600 font-semibold'
-                    : 'text-warm-700 hover:bg-blood-50 hover:text-blood-600'
+                    ? 'bg-blood-600 text-white font-semibold shadow-lg shadow-blood-600/20'
+                    : 'text-warm-700 hover:bg-blood-50 hover:text-blood-600 hover:translate-x-0.5'
                   }
                 `}
               >
@@ -173,14 +176,14 @@ export default function DonorLayout() {
           </nav>
 
           {/* ── Drop-up: user info + profile + sign out ─────────────────── */}
-          <div className="border-t border-warm-100 p-3 flex-shrink-0" ref={dropUpRef}>
+          <div className="border-t border-warm-100/80 p-3 flex-shrink-0 relative" ref={dropUpRef}>
             {/* Drop-up menu — appears above the trigger */}
             {dropUpOpen && (
               <div
                 className={`
-                  absolute bottom-full mb-2 bg-white border border-warm-200 rounded-2xl
-                  shadow-xl overflow-hidden transition-all duration-200
-                  ${collapsed ? 'left-16 ml-2 w-48' : 'left-3 right-3'}
+                  absolute bottom-full mb-3 bg-white/95 border border-warm-200 rounded-2xl
+                  shadow-2xl overflow-hidden transition-all duration-300 backdrop-blur-xl
+                  ${collapsed ? 'left-[76px] ml-3 w-52' : 'left-3 right-3'}
                 `}
               >
                 <Link
@@ -207,7 +210,7 @@ export default function DonorLayout() {
               onClick={() => setDropUpOpen(v => !v)}
               className={`
                 w-full flex items-center gap-2 p-2 rounded-xl
-                hover:bg-warm-100 transition-all duration-200 cursor-pointer
+                hover:bg-warm-100 transition-all duration-300 cursor-pointer
                 ${collapsed ? 'justify-center' : ''}
                 ${dropUpOpen ? 'bg-warm-100' : ''}
               `}
@@ -242,12 +245,12 @@ export default function DonorLayout() {
 
         {/* ── Main content ───────────────────────────────────────────────── */}
         <main
-          className={`flex-1 overflow-auto transition-all duration-300 ease-in-out ${
-            collapsed ? 'ml-16' : 'ml-64'
+          className={`min-h-screen overflow-auto transition-[padding] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+            isMapView ? '' : collapsed ? 'pl-[108px]' : 'pl-[296px]'
           }`}
         >
-          <div className="p-6">
-            <Outlet />
+          <div className={isMapView ? 'h-full' : 'p-6 h-full'}>
+            <Outlet context={{ collapsed }} />
           </div>
         </main>
       </div>

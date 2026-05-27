@@ -25,11 +25,16 @@ class AvailabilityStatus(models.TextChoices):
     BUSY = "BUSY", "Busy"
 
 
+class Gender(models.TextChoices):
+    MALE = "M", "Male"
+    FEMALE = "F", "Female"
+
 class DonorProfile(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user_id = models.UUIDField(unique=True, db_index=True)
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100, blank=True, default="")
+    gender = models.CharField(max_length=20, choices=Gender.choices, blank=True, default="")
     phone = models.CharField(max_length=20, blank=True, default="")
     date_of_birth = models.DateField(null=True, blank=True)
     blood_type = models.CharField(max_length=10, choices=BloodType.choices, default=BloodType.UNKNOWN)

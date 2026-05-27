@@ -1,33 +1,10 @@
 // src/pages/donor/MapView.jsx
-import { useState, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { MapPin, Droplets, Navigation, AlertTriangle, Calendar, Building2, ChevronLeft, ChevronRight } from 'lucide-react'
-
-// Fix Leaflet default icon issue with Vite
-delete L.Icon.Default.prototype._getIconUrl
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl:       'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl:     'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-})
-
-const redIcon = new L.Icon({
-  iconUrl:    'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-  shadowUrl:  'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-  iconSize:   [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34],
-})
-const blueIcon = new L.Icon({
-  iconUrl:    'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-  shadowUrl:  'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-  iconSize:   [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34],
-})
-const greenIcon = new L.Icon({
-  iconUrl:    'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
-  shadowUrl:  'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-  iconSize:   [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34],
-})
+import { MapPin, Navigation, AlertTriangle, Calendar, Building2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useOutletContext } from 'react-router-dom'
 
 const YAOUNDE_CENTER = [3.8667, 11.5167]
 
@@ -54,15 +31,61 @@ const LEGEND = [
 ]
 
 function getIcon(type) {
-  if (type === 'emergency') return redIcon
-  if (type === 'campaign')  return blueIcon
-  return greenIcon
+  const color = {
+    emergency: '#dc2626',
+    campaign: '#2563eb',
+    facility: '#059669',
+  }[type] || '#111827'
+  const glyph = {
+    emergency: '!',
+    campaign: 'C',
+    facility: '+',
+  }[type] || ''
+
+  return L.divIcon({
+    className: '',
+    iconSize: [38, 38],
+    iconAnchor: [19, 19],
+    popupAnchor: [0, -18],
+    html: `
+      <div style="
+        width:38px;height:38px;border-radius:18px 18px 18px 6px;
+        background:${color};transform:rotate(-45deg);
+        box-shadow:0 14px 28px rgba(15,23,42,.22), inset 0 0 0 3px rgba(255,255,255,.9);
+        display:flex;align-items:center;justify-content:center;">
+        <span style="
+          transform:rotate(45deg);color:white;font-weight:900;font-size:13px;
+          font-family:Inter,system-ui,sans-serif;">${glyph}</span>
+      </div>
+    `,
+  })
 }
 
 // Imperative map controller — flies to a position
 function FlyTo({ position, trigger }) {
   const map = useMap()
-  if (trigger && position) map.flyTo(position, 15, { duration: 1.2 })
+  useEffect(() => {
+    if (trigger > 0 && position) {
+      map.flyTo(position, 15, { duration: 1.2 })
+    }
+  }, [trigger, position, map])
+  return null
+}
+
+function MapWatcher({ onDistanceChange }) {
+  const map = useMap()
+  useEffect(() => {
+    const update = () => {
+      const center = map.getCenter()
+      const distance = center.distanceTo(L.latLng(YAOUNDE_CENTER[0], YAOUNDE_CENTER[1]))
+      onDistanceChange(distance)
+    }
+    update()
+    map.on('moveend zoomend', update)
+    return () => {
+      map.off('moveend zoomend', update)
+    }
+  }, [map, onDistanceChange])
   return null
 }
 
@@ -115,9 +138,13 @@ function LocationCard({ loc, selected, onClick }) {
 }
 
 export default function MapView() {
+  const context = useOutletContext()
+  const collapsed = context?.collapsed || false
+
   const [filter,   setFilter]   = useState('all')
   const [selected, setSelected] = useState(null)
   const [flyHome,  setFlyHome]  = useState(0) // increment to trigger fly
+  const [distanceFromHome, setDistanceFromHome] = useState(0)
   const scrollRef = useRef(null)
 
   const visible = filter === 'all'
@@ -131,8 +158,7 @@ export default function MapView() {
   }
 
   return (
-    // Full-page container — must fill the parent which is the <main> inside DonorLayout
-    <div className="relative w-full rounded-2xl overflow-hidden" style={{ height: 'calc(100vh - 96px)' }}>
+    <div className="relative w-full h-screen overflow-hidden bg-warm-100">
 
       {/* ── Full-page map ──────────────────────────────────────────────── */}
       <MapContainer
@@ -140,6 +166,7 @@ export default function MapView() {
         zoom={13}
         style={{ height: '100%', width: '100%' }}
         zoomControl={false}
+        className="z-0"
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -188,11 +215,12 @@ export default function MapView() {
         ))}
 
         {/* Fly-to-home controller */}
-        <FlyTo position={YAOUNDE_CENTER} trigger={flyHome > 0} />
+        <FlyTo position={YAOUNDE_CENTER} trigger={flyHome} />
+        <MapWatcher onDistanceChange={setDistanceFromHome} />
       </MapContainer>
 
       {/* ── TOP overlay: filter pills ──────────────────────────────────── */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[400] flex items-center gap-2 px-3 py-2 bg-white/80 backdrop-blur-md rounded-2xl shadow-lg border border-white/60">
+      <div className="absolute top-5 left-1/2 -translate-x-1/2 z-[400] flex items-center gap-2 px-3 py-2 bg-white/85 backdrop-blur-xl rounded-2xl shadow-lg border border-white/70">
         {FILTERS.map(f => {
           const Icon = f.icon
           return (
@@ -212,7 +240,7 @@ export default function MapView() {
       </div>
 
       {/* ── TOP-RIGHT: location count badge ───────────────────────────── */}
-      <div className="absolute top-4 right-4 z-[400] bg-white/80 backdrop-blur-md rounded-xl px-3 py-1.5 shadow border border-white/60">
+      <div className="absolute top-5 right-5 z-[400] bg-white/85 backdrop-blur-xl rounded-xl px-3 py-1.5 shadow border border-white/70">
         <p className="text-xs font-semibold text-neutral-600">{visible.length} locations</p>
       </div>
 
@@ -223,19 +251,22 @@ export default function MapView() {
       </div>
 
       {/* ── RIGHT-BOTTOM: "My location" button ────────────────────────── */}
-      <div className="absolute bottom-44 right-4 z-[400]">
+      {distanceFromHome > 900 && (
+      <div className="absolute right-5 bottom-36 z-[400]">
         <button
           onClick={() => setFlyHome(n => n + 1)}
-          className="w-10 h-10 bg-white rounded-xl shadow-lg border border-neutral-200 flex items-center justify-center text-blood-600 hover:bg-blood-50 transition-colors"
+          className="h-11 px-4 bg-white rounded-2xl shadow-lg border border-neutral-200 flex items-center gap-2 text-blood-600 hover:bg-blood-50 transition-colors text-xs font-semibold"
           title="Back to my location"
         >
           <Navigation size={18} />
+          My location
         </button>
       </div>
+      )}
 
-      {/* ── BOTTOM-LEFT: legend ───────────────────────────────────────── */}
-      <div className="absolute bottom-4 left-4 z-[400]">
-        <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow border border-white/60 px-3 py-2.5 flex flex-col gap-1.5">
+      {/* ── RIGHT: legend ─────────────────────────────────────────────── */}
+      <div className="absolute top-20 right-5 z-[400]">
+        <div className="bg-white/85 backdrop-blur-xl rounded-2xl shadow border border-white/70 px-3 py-2.5 flex flex-col gap-1.5">
           {LEGEND.map(l => (
             <div key={l.label} className="flex items-center gap-2">
               <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${l.color}`} />
@@ -246,8 +277,8 @@ export default function MapView() {
       </div>
 
       {/* ── BOTTOM overlay: scrollable location cards ─────────────────── */}
-      <div className="absolute bottom-4 left-0 right-0 z-[400] px-4">
-        <div className="relative">
+      <div className={`absolute bottom-5 left-0 right-0 z-[400] transition-[padding] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${collapsed ? 'pl-[100px]' : 'pl-[288px]'}`}>
+        <div className="relative w-full">
           {/* Left scroll arrow */}
           <button
             onClick={() => scrollCards(-1)}
@@ -259,7 +290,7 @@ export default function MapView() {
           {/* Cards strip */}
           <div
             ref={scrollRef}
-            className="flex gap-3 overflow-x-auto scrollbar-hide pl-4 pr-4"
+            className="flex gap-3 overflow-x-auto scrollbar-hide pl-4 pr-10"
             style={{ scrollSnapType: 'x mandatory' }}
           >
             {visible.map(loc => (
@@ -285,3 +316,4 @@ export default function MapView() {
     </div>
   )
 }
+

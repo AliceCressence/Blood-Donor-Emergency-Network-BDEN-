@@ -107,6 +107,19 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = [origin.strip() for origin in os.environ.get("FRONTEND_URL", "http://localhost:5173").split(",") if origin.strip()]
 CORS_ALLOW_CREDENTIALS = True
 
+UNFOLD = {
+    "SITE_TITLE": "BDEN Auth Service Admin",
+    "SITE_HEADER": "Blood Donor Emergency Network",
+    "SITE_SYMBOL": "favorite",
+    "SITE_FAVICONS": [
+        {
+            "rel": "icon",
+            "href": "/static/favicon.svg",
+            "type": "image/svg+xml",
+        },
+    ],
+}
+
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
 GOOGLE_REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI", "")
@@ -124,6 +137,5 @@ TIME_ZONE = "Africa/Douala"
 USE_I18N = True
 USE_TZ = True
 STATIC_URL = "/static/"
-
-STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = [BASE_DIR / "static"]
