@@ -26,8 +26,8 @@ class AvailabilityStatus(models.TextChoices):
 
 
 class Gender(models.TextChoices):
-    MALE = "M", "Male"
-    FEMALE = "F", "Female"
+    MALE = "MALE", "Male"
+    FEMALE = "FEMALE", "Female"
 
 class DonorProfile(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

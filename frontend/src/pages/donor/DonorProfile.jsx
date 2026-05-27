@@ -3,7 +3,7 @@ import { useState, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
   User, Phone, MapPin, Save, CheckCircle,
-  Mail, Shield, AlertTriangle, X, Trash2, UserX, Venus, Mars, CircleDashed,
+  Mail, Shield, AlertTriangle, X, Trash2, UserX, Venus, Mars,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 
@@ -12,8 +12,6 @@ const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
 const GENDER_OPTIONS = [
   { value: 'MALE',   label: 'Male',   icon: Mars          },
   { value: 'FEMALE', label: 'Female', icon: Venus         },
-  { value: 'OTHER',  label: 'Other',  icon: CircleDashed  },
-  { value: 'PREFER_NOT_TO_SAY', label: 'Skip', icon: CircleDashed },
 ]
 
 // Auth provider display config
