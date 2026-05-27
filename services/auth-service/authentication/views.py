@@ -12,7 +12,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView as BaseTokenRefreshView
 
-from accounts.models import HospitalRegistration
+from accounts.models import HospitalRegistration, User
 from .permissions import IsAdmin
 from .serializers import (
     AdminVerificationSerializer,
@@ -31,6 +31,8 @@ def user_payload(user, **extra):
         "email": user.email,
         "role": user.role.lower(),
         "isVerified": user.is_verified,
+        "gender": user.gender,
+        "authProvider": user.auth_provider,
     }
     payload.update(extra)
     return payload
@@ -225,7 +227,17 @@ class GoogleAuthCallbackView(APIView):
             )
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        return token_response(user, "Google authentication successful.", is_new_user=is_new, profile_complete=not is_new)
+        profile_status = DonorRegistrationService().get_profile_status(str(user.id))
+        return token_response(
+            user,
+            "Google authentication successful.",
+            is_new_user=is_new,
+            profile_complete=profile_status.get("profile_complete", False),
+            name=f"{profile_status.get('first_name', '')} {profile_status.get('last_name', '')}".strip(),
+            phone=profile_status.get("phone", ""),
+            city=profile_status.get("city", ""),
+            bloodType=profile_status.get("blood_type", ""),
+        )
 
 
 class MeView(APIView):
@@ -239,6 +251,31 @@ class MeView(APIView):
         tags=["Authentication"],
     )
     def get(self, request):
+        return Response({"user": user_payload(request.user)})
+
+    @swagger_auto_schema(
+        operation_summary="Update current user",
+        operation_description="Updates account-level profile metadata owned by auth-service. Email is intentionally not editable.",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                "gender": openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    enum=[choice[0] for choice in User.Gender.choices],
+                    description="Optional user gender value used for profile completion.",
+                ),
+            },
+        ),
+        responses={200: "Updated current user"},
+        tags=["Authentication"],
+    )
+    def patch(self, request):
+        gender = request.data.get("gender")
+        if gender is not None:
+            if gender and gender not in User.Gender.values:
+                return Response({"gender": "Unsupported gender value."}, status=status.HTTP_400_BAD_REQUEST)
+            request.user.gender = gender
+            request.user.save(update_fields=["gender", "updated_at"])
         return Response({"user": user_payload(request.user)})
 
 

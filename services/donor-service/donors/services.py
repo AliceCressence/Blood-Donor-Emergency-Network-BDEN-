@@ -7,13 +7,14 @@ from .models import AvailabilityStatus, DonationRecord, DonorProfile, VirtualDon
 
 class DonorProfileService:
     @transaction.atomic
-    def create_profile(self, user_id, first_name, last_name="", phone="", city="", blood_type=""):
+    def create_profile(self, user_id, first_name, last_name="", phone="", city="", blood_type="", gender=""):
         if DonorProfile.objects.filter(user_id=user_id).exists():
             raise ValueError("Profile already exists for this user.")
         profile = DonorProfile.objects.create(
             user_id=user_id,
             first_name=first_name,
             last_name=last_name,
+            gender=gender,
             phone=phone,
             city=city,
             blood_type=blood_type or "UNKNOWN",
@@ -26,7 +27,7 @@ class DonorProfileService:
         return DonorProfile.objects.get_by_user_id(user_id)
 
     def update_profile(self, user_id, validated_data):
-        permitted = {"first_name", "last_name", "phone", "date_of_birth", "latitude", "longitude", "city", "region", "availability_status"}
+        permitted = {"first_name", "last_name", "gender", "phone", "date_of_birth", "latitude", "longitude", "city", "region", "availability_status"}
         profile = self.get_profile(user_id)
         changed = []
         for key, value in validated_data.items():

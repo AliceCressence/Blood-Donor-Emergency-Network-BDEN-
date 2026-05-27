@@ -62,6 +62,18 @@ def test_internal_create_profile(api_client):
 
 
 @pytest.mark.django_db
+def test_internal_profile_status(api_client, donor_profile):
+    assert api_client.get(f"/internal/donors/profile-status/?user_id={donor_profile.user_id}").status_code == 403
+    res = api_client.get(f"/internal/donors/profile-status/?user_id={donor_profile.user_id}", HTTP_X_INTERNAL_API_KEY=settings.INTERNAL_API_KEY)
+    assert res.status_code == 200
+    assert res.data["profile_complete"] is True
+    donor_profile.phone = ""
+    donor_profile.save(update_fields=["phone"])
+    res = api_client.get(f"/internal/donors/profile-status/?user_id={donor_profile.user_id}", HTTP_X_INTERNAL_API_KEY=settings.INTERNAL_API_KEY)
+    assert res.data["profile_complete"] is False
+
+
+@pytest.mark.django_db
 def test_internal_nearby(api_client, donor_profile):
     assert api_client.get("/internal/donors/nearby/", HTTP_X_INTERNAL_API_KEY=settings.INTERNAL_API_KEY).status_code == 400
     res = api_client.get("/internal/donors/nearby/?blood_type=O%2B&lat=3.8667&lng=11.5167", HTTP_X_INTERNAL_API_KEY=settings.INTERNAL_API_KEY)

@@ -28,6 +28,8 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             "email": user.email,
             "role": user.role.lower(),
             "isVerified": user.is_verified,
+            "gender": user.gender,
+            "authProvider": user.auth_provider,
         }
         data["user_id"] = str(user.id)
         data["role"] = user.role
@@ -44,6 +46,7 @@ class DonorRegistrationSerializer(serializers.Serializer):
     phone = serializers.CharField(max_length=20, required=False, allow_blank=True, default="")
     city = serializers.CharField(max_length=100)
     blood_type = serializers.CharField(max_length=3, required=False, allow_blank=True, default="")
+    gender = serializers.ChoiceField(choices=User.Gender.choices, required=False, allow_blank=True, default="")
 
     def validate_email(self, value):
         normalized = value.lower().strip()

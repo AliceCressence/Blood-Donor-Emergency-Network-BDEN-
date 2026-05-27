@@ -62,10 +62,22 @@ export function AuthProvider({ children }) {
     return data.user
   }, [])
 
-  const updateUser = (updates) => {
-    const updated = { ...user, ...updates }
+  const updateUser = async (updates, { persist = true } = {}) => {
+    if (persist) {
+      const authPayload = {}
+      if ('gender' in updates) authPayload.gender = updates.gender || ''
+      if (Object.keys(authPayload).length) {
+        await authService.updateCurrentUser(authPayload)
+      }
+      await authService.updateDonorProfile(updates)
+      if (updates.bloodType) {
+        await authService.updateDonorBloodType(updates.bloodType)
+      }
+    }
+    const updated = { ...user, ...updates, profileComplete: true }
     setUser(updated)
     localStorage.setItem('bden_user', JSON.stringify(updated))
+    return updated
   }
 
   return (

@@ -30,7 +30,13 @@ function normalizeUser(data) {
     email: user.email || data.email,
     role: (user.role || data.role || '').toLowerCase(),
     isVerified: user.isVerified ?? data.is_verified ?? false,
-    profileComplete: data.profile_complete,
+    name: user.name || data.name || '',
+    phone: user.phone || data.phone || '',
+    city: user.city || data.city || '',
+    bloodType: user.bloodType || data.bloodType || data.blood_type || '',
+    gender: user.gender || data.gender || '',
+    authProvider: user.authProvider || data.auth_provider || (user.google_id ? 'google' : 'email'),
+    profileComplete: data.profile_complete ?? user.profileComplete,
   }
 }
 
@@ -111,6 +117,61 @@ export const authService = {
       { refresh },
       { headers: { Authorization: `Bearer ${access}` } },
     )
+  },
+
+  updateCurrentUser: async (payload) => {
+    try {
+      const access = localStorage.getItem('bden_token')
+      const { data } = await api.patch(
+        '/api/auth/me/',
+        payload,
+        { headers: { Authorization: `Bearer ${access}` } },
+      )
+      return normalizeUser(data)
+    } catch (error) {
+      throw new Error(errorMessage(error), { cause: error })
+    }
+  },
+
+  updateDonorProfile: async (payload) => {
+    try {
+      const access = localStorage.getItem('bden_token')
+      const names = splitName(payload.name || '')
+      const body = {
+        first_name: names.first_name,
+        last_name: names.last_name,
+        phone: payload.phone || '',
+        city: payload.city || '',
+        gender: payload.gender || '',
+        availability_status: payload.available ? 'AVAILABLE' : 'UNAVAILABLE',
+      }
+      Object.keys(body).forEach(key => {
+        if (body[key] === undefined) delete body[key]
+      })
+      const { data } = await api.patch(
+        '/api/donors/me/',
+        body,
+        { headers: { Authorization: `Bearer ${access}` } },
+      )
+      return data
+    } catch (error) {
+      throw new Error(errorMessage(error), { cause: error })
+    }
+  },
+
+  updateDonorBloodType: async (bloodType) => {
+    if (!bloodType) return null
+    try {
+      const access = localStorage.getItem('bden_token')
+      const { data } = await api.patch(
+        '/api/donors/me/blood-type/',
+        { blood_type: bloodType, verified: false },
+        { headers: { Authorization: `Bearer ${access}` } },
+      )
+      return data
+    } catch (error) {
+      throw new Error(errorMessage(error), { cause: error })
+    }
   },
 
   getGoogleAuthUrl: async () => {

@@ -71,6 +71,7 @@ export default function ProfileSettings() {
   const [profile, setProfile] = useState({
     name: user?.name || 'Alice Cressence',
     email: user?.email || 'alice@example.com',
+    gender: user?.gender || 'FEMALE',
     phone: '+237 6XX XXX XXX',
     city: 'Yaoundé',
     bloodType: 'O−',
@@ -139,6 +140,16 @@ export default function ProfileSettings() {
               onChange={e => setProfile(p => ({ ...p, email: e.target.value }))}
               placeholder="you@example.com"
             />
+          </Field>
+          <Field label="Gender" hint="Required for medical eligibility formulas">
+            <select
+              value={profile.gender}
+              onChange={e => setProfile(p => ({ ...p, gender: e.target.value }))}
+              className="w-full rounded-xl border border-neutral-200 px-4 py-2.5 text-sm outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 bg-white"
+            >
+              <option value="MALE">Male</option>
+              <option value="FEMALE">Female</option>
+            </select>
           </Field>
           <Field label="Phone Number" hint="Used for emergency SMS alerts">
             <Input
@@ -328,3 +339,4 @@ export default function ProfileSettings() {
     </div>
   )
 }
+

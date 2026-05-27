@@ -18,6 +18,7 @@ class DonorRegistrationService:
             password=validated_data["password"],
             role=User.Role.DONOR,
             is_verified=True,
+            gender=validated_data.get("gender", ""),
         )
         success = self._create_donor_profile(
             user_id=str(user.id),
@@ -26,12 +27,13 @@ class DonorRegistrationService:
             phone=validated_data.get("phone", ""),
             city=validated_data["city"],
             blood_type=validated_data.get("blood_type", ""),
+            gender=validated_data.get("gender", ""),
         )
         if not success:
             raise RuntimeError("Donor profile creation failed.")
         return user
 
-    def _create_donor_profile(self, user_id: str, first_name: str, last_name: str, phone: str, city: str, blood_type: str = "") -> bool:
+    def _create_donor_profile(self, user_id: str, first_name: str, last_name: str, phone: str, city: str, blood_type: str = "", gender: str = "") -> bool:
         url = f"{settings.DONOR_SERVICE_INTERNAL_URL}/internal/donors/create-profile/"
         try:
             response = http_requests.post(
@@ -43,6 +45,7 @@ class DonorRegistrationService:
                     "phone": phone,
                     "city": city,
                     "blood_type": blood_type,
+                    "gender": gender,
                 },
                 headers={"X-Internal-API-Key": settings.INTERNAL_API_KEY, "Content-Type": "application/json"},
                 timeout=10,
@@ -51,6 +54,21 @@ class DonorRegistrationService:
         except http_requests.RequestException as exc:
             logger.error("Error calling donor-service: %s", exc)
             return False
+
+    def get_profile_status(self, user_id: str) -> dict:
+        url = f"{settings.DONOR_SERVICE_INTERNAL_URL}/internal/donors/profile-status/"
+        try:
+            response = http_requests.get(
+                url,
+                params={"user_id": user_id},
+                headers={"X-Internal-API-Key": settings.INTERNAL_API_KEY},
+                timeout=10,
+            )
+            if response.status_code == 200:
+                return response.json()
+        except http_requests.RequestException as exc:
+            logger.error("Error checking donor profile status: %s", exc)
+        return {"profile_complete": False}
 
 
 class HospitalRegistrationService:

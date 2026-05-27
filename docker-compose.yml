@@ -243,13 +243,30 @@ services:
     build:
       context: ./infrastructure/nginx
     ports:
-      - "${PORT_PREFIX:-}8080:80"
+      - "${PORT_PREFIX:-}8000:80"
     depends_on:
       - auth-service
       - donor-service
       - request-service
       - campaign-service
       - notification-service
+    networks:
+      - bden_network
+
+  jenkins:
+    build:
+      context: ./infrastructure/jenkins
+    container_name: bden-jenkins
+    restart: unless-stopped
+    user: root
+    ports:
+      - "8081:8080"
+      - "50000:50000"
+    environment:
+      JAVA_OPTS: "-Djenkins.install.runSetupWizard=true"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - bden_network
 
@@ -260,6 +277,7 @@ volumes:
   campaign_db_data:
   notification_db_data:
   redis_data:
+  jenkins_home:
 
 networks:
   bden_network:

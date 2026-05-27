@@ -4,6 +4,7 @@ from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from .models import DonorProfile
 from .serializers import NearbyDonorSerializer
 from .services import DonorProfileService
 
@@ -49,3 +50,31 @@ class InternalNearbyDonorsView(APIView):
         except ValueError:
             return Response({"detail": "Invalid numeric query parameter."}, status=status.HTTP_400_BAD_REQUEST)
         return Response({"count": len(donors), "donors": NearbyDonorSerializer(donors, many=True).data})
+
+
+class InternalDonorProfileStatusView(APIView):
+    authentication_classes = []
+    permission_classes = [InternalAPIKeyPermission]
+    swagger_schema = None
+
+    def get(self, request):
+        user_id = request.query_params.get("user_id")
+        if not user_id:
+            return Response({"detail": "user_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            profile = DonorProfile.objects.get(user_id=user_id)
+        except DonorProfile.DoesNotExist:
+            return Response({"detail": "Donor profile not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        profile_complete = bool(profile.phone.strip() and profile.city.strip() and profile.blood_type and profile.blood_type != "UNKNOWN")
+        return Response(
+            {
+                "profile_complete": profile_complete,
+                "phone": profile.phone,
+                "city": profile.city,
+                "blood_type": profile.blood_type,
+                "gender": profile.gender,
+                "first_name": profile.first_name,
+                "last_name": profile.last_name,
+            }
+        )
