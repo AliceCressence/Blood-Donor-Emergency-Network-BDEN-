@@ -38,8 +38,8 @@ GET   /api/estimation/session/
 Gateway documentation:
 
 ```text
-http://localhost:8080/api/donor/docs/
-http://localhost:8080/api/donor/redoc/
+http://localhost:8000/api/donor/docs/
+http://localhost:8000/api/donor/redoc/
 ```
 
 Direct service documentation:

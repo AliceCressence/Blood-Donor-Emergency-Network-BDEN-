@@ -3,15 +3,15 @@
 Base URL through the gateway:
 
 ```text
-http://localhost:8080
+http://localhost:8000
 ```
 
 Interactive documentation:
 
 ```text
-Swagger UI: http://localhost:8080/api/docs/swagger/
-ReDoc:      http://localhost:8080/api/docs/redoc/
-OpenAPI:   http://localhost:8080/api/schema.json
+Swagger UI: http://localhost:8000/api/docs/swagger/
+ReDoc:      http://localhost:8000/api/docs/redoc/
+OpenAPI:   http://localhost:8000/api/schema.json
 ```
 
 ## Donor Registration

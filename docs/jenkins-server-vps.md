@@ -1,6 +1,6 @@
 # Jenkins Server Setup on VPS
 
-This guide prepares the CI/CD path for an Ubuntu VPS. Deployment stages remain disabled until the production target is provisioned.
+This guide prepares the CI/CD path for an Ubuntu VPS. For the complete BDEN Lightsail setup, including domain, Nginx, K3s/Kubernetes orchestration, native Jenkins deployment stages, firewall, and rollback flow, use [BDEN VPS Configuration Guide](vps_config.md).
 
 ## Prerequisites
 

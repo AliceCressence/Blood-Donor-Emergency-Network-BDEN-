@@ -28,15 +28,29 @@ The Compose stack starts:
 - Redis
 - five Django service containers
 - one donor event consumer container
-- Nginx gateway on `localhost:8080`
+- Nginx gateway on `localhost:8000`
 
-`http://localhost:8080/` is a gateway index, not a Django app page. Use these routes while developing:
+The PostgreSQL containers listen on port `5432` inside Docker. For host tools such as `psql` or a database GUI, the default local host ports are:
+
+| Service | Host port |
+| --- | ---: |
+| auth-db | 15432 |
+| donor-db | 15433 |
+| request-db | 15434 |
+| campaign-db | 15435 |
+| notification-db | 15436 |
+
+These can be overridden in `.env` with `AUTH_DB_HOST_PORT`, `DONOR_DB_HOST_PORT`, `REQUEST_DB_HOST_PORT`, `CAMPAIGN_DB_HOST_PORT`, and `NOTIFICATION_DB_HOST_PORT`.
+
+Redis listens on `redis:6379` inside Docker and `localhost:16379` from the host by default. Override the host port with `REDIS_HOST_PORT`.
+
+`http://localhost:8000/` is a gateway index, not a Django app page. Use these routes while developing:
 
 ```bash
-curl http://localhost:8080/
-curl http://localhost:8080/health/auth/
-curl http://localhost:8080/api/docs/swagger/
-curl http://localhost:8080/api/donor/docs/
+curl http://localhost:8000/
+curl http://localhost:8000/health/auth/
+curl http://localhost:8000/api/docs/swagger/
+curl http://localhost:8000/api/donor/docs/
 ```
 
 ## Run Migrations Manually
@@ -60,7 +74,7 @@ Create an admin user:
 docker compose run --rm auth-service python manage.py createsuperuser
 ```
 
-The auth admin is available at `http://localhost:8080/django-admin/auth/` or directly at `http://localhost:8001/django-admin/`. Donor admin is available at `http://localhost:8080/django-admin/donor/` or directly at `http://localhost:8002/django-admin/`.
+The auth admin is available at `http://localhost:8000/django-admin/auth/` or directly at `http://localhost:8001/django-admin/`. Donor admin is available at `http://localhost:8000/django-admin/donor/` or directly at `http://localhost:8002/django-admin/`.
 
 ## Donor Service Reset Note
 

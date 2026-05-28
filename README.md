@@ -38,41 +38,41 @@ Start backend infrastructure and services:
 docker compose up --build
 ```
 
-The gateway listens on `http://localhost:8080`.
+The gateway listens on `http://localhost:8000`.
 
-Opening `http://localhost:8080/` returns a small JSON gateway index. The backend itself is API-first, so most useful routes are under `/api/...`, `/health/...`, and `/django-admin/...`.
+Opening `http://localhost:8000/` returns a small JSON gateway index. The backend itself is API-first, so most useful routes are under `/api/...`, `/health/...`, and `/django-admin/...`.
 
 Useful health checks:
 
 ```bash
-curl http://localhost:8080/health/auth/
-curl http://localhost:8080/health/donor/
-curl http://localhost:8080/health/request/
-curl http://localhost:8080/health/campaign/
-curl http://localhost:8080/health/notification/
+curl http://localhost:8000/health/auth/
+curl http://localhost:8000/health/donor/
+curl http://localhost:8000/health/request/
+curl http://localhost:8000/health/campaign/
+curl http://localhost:8000/health/notification/
 ```
 
 Auth API documentation:
 
 ```bash
-http://localhost:8080/api/docs/swagger/
-http://localhost:8080/api/docs/redoc/
-http://localhost:8080/api/schema.json
+http://localhost:8000/api/docs/swagger/
+http://localhost:8000/api/docs/redoc/
+http://localhost:8000/api/schema.json
 ```
 
 Donor API documentation:
 
 ```bash
-http://localhost:8080/api/donor/docs/
-http://localhost:8080/api/donor/redoc/
+http://localhost:8000/api/donor/docs/
+http://localhost:8000/api/donor/redoc/
 http://localhost:8002/api/docs/  # donor-service direct
 ```
 
 Django admin:
 
 ```bash
-http://localhost:8080/django-admin/auth/
-http://localhost:8080/django-admin/donor/
+http://localhost:8000/django-admin/auth/
+http://localhost:8000/django-admin/donor/
 http://localhost:8001/django-admin/  # auth-service direct
 http://localhost:8002/django-admin/  # donor-service direct
 ```
@@ -85,7 +85,7 @@ npm install
 npm run dev
 ```
 
-The frontend expects `VITE_API_BASE_URL=http://localhost:8080`, which is already the default in `frontend/src/services/auth.service.js`.
+The frontend expects `VITE_API_BASE_URL=http://localhost:8000`, which is already the default in `frontend/src/services/auth.service.js`.
 
 For Google OAuth, configure these values in `.env` and in the Google Cloud Console OAuth client:
 
@@ -122,6 +122,7 @@ config/settings/prod.py
 - [Auth API](docs/auth-api.md)
 - [Donor Service](docs/donor-service.md)
 - [Deployment Notes](docs/deployment.md)
+- [VPS Configuration](docs/vps_config.md)
 - [Jenkins Local Windows](docs/jenkins-local-windows.md)
 - [Jenkins Server VPS](docs/jenkins-server-vps.md)
 
