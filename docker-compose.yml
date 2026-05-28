@@ -6,7 +6,7 @@ services:
       POSTGRES_USER: ${AUTH_DB_USER:-bden_user}
       POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD:-bden_password}
     ports:
-      - "${PORT_PREFIX:-}5432:5432"
+      - "${AUTH_DB_HOST_PORT:-15432}:5432"
     volumes:
       - auth_db_data:/var/lib/postgresql/data
     networks:
@@ -19,7 +19,7 @@ services:
       POSTGRES_USER: ${DONOR_DB_USER:-bden_user}
       POSTGRES_PASSWORD: ${DONOR_DB_PASSWORD:-bden_password}
     ports:
-      - "${PORT_PREFIX:-}5433:5432"
+      - "${DONOR_DB_HOST_PORT:-15433}:5432"
     volumes:
       - donor_db_data:/var/lib/postgresql/data
     networks:
@@ -32,7 +32,7 @@ services:
       POSTGRES_USER: ${REQUEST_DB_USER:-bden_user}
       POSTGRES_PASSWORD: ${REQUEST_DB_PASSWORD:-bden_password}
     ports:
-      - "${PORT_PREFIX:-}5434:5432"
+      - "${REQUEST_DB_HOST_PORT:-15434}:5432"
     volumes:
       - request_db_data:/var/lib/postgresql/data
     networks:
@@ -45,7 +45,7 @@ services:
       POSTGRES_USER: ${CAMPAIGN_DB_USER:-bden_user}
       POSTGRES_PASSWORD: ${CAMPAIGN_DB_PASSWORD:-bden_password}
     ports:
-      - "${PORT_PREFIX:-}5435:5432"
+      - "${CAMPAIGN_DB_HOST_PORT:-15435}:5432"
     volumes:
       - campaign_db_data:/var/lib/postgresql/data
     networks:
@@ -58,7 +58,7 @@ services:
       POSTGRES_USER: ${NOTIFICATION_DB_USER:-bden_user}
       POSTGRES_PASSWORD: ${NOTIFICATION_DB_PASSWORD:-bden_password}
     ports:
-      - "${PORT_PREFIX:-}5436:5432"
+      - "${NOTIFICATION_DB_HOST_PORT:-15436}:5432"
     volumes:
       - notification_db_data:/var/lib/postgresql/data
     networks:
@@ -67,7 +67,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "${PORT_PREFIX:-}6379:6379"
+      - "${REDIS_HOST_PORT:-16379}:6379"
     volumes:
       - redis_data:/data
     networks:
