@@ -56,6 +56,10 @@ For a private repository, add GitHub credentials in Jenkins first and select the
 
 The local compose file mounts `/var/run/docker.sock`. This works when Docker Desktop exposes the socket to Linux containers. If Jenkins cannot run Docker commands, use a Jenkins agent that has Docker CLI access or run the pipeline stages manually from PowerShell while keeping Jenkins as the orchestration target.
 
+## Common Build Failures
+
+If the `Django Service Tests` stage fails while building an image with a `ReadTimeoutError` from `files.pythonhosted.org`, Jenkins reached Docker but `pip install` timed out while downloading dependencies. The service Dockerfiles use longer pip timeouts and retries, so rerun the build after pulling the latest branch. If the network is still unstable, rerun the failed build; completed dependency layers are reused by Docker.
+
 ## What The Pipeline Runs
 
 - checkout

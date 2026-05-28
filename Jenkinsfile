@@ -11,7 +11,12 @@ pipeline {
         COMPOSE_PROJECT_NAME = 'bden-ci'
         DJANGO_SETTINGS_MODULE = 'config.settings.dev'
         VITE_API_BASE_URL = 'http://localhost:8080'
-        PORT_PREFIX = '1'
+        AUTH_DB_HOST_PORT = '25432'
+        DONOR_DB_HOST_PORT = '25433'
+        REQUEST_DB_HOST_PORT = '25434'
+        CAMPAIGN_DB_HOST_PORT = '25435'
+        NOTIFICATION_DB_HOST_PORT = '25436'
+        REDIS_HOST_PORT = '26379'
     }
 
     stages {
