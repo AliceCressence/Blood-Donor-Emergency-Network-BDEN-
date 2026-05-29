@@ -1,0 +1,78 @@
+# Optional production smoke-test/fallback overlay.
+# K3s is the preferred VPS orchestrator. Use this only when you need Docker Compose parity checks
+# or an emergency non-Kubernetes fallback.
+
+services:
+  auth-db:
+    ports: !reset []
+    restart: unless-stopped
+
+  donor-db:
+    ports: !reset []
+    restart: unless-stopped
+
+  request-db:
+    ports: !reset []
+    restart: unless-stopped
+
+  campaign-db:
+    ports: !reset []
+    restart: unless-stopped
+
+  notification-db:
+    ports: !reset []
+    restart: unless-stopped
+
+  redis:
+    ports: !reset []
+    restart: unless-stopped
+
+  auth-service:
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      DEBUG: "False"
+    ports: !reset []
+    restart: unless-stopped
+
+  donor-service:
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      DEBUG: "False"
+    ports: !reset []
+    restart: unless-stopped
+
+  donor-event-consumer:
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      DEBUG: "False"
+    restart: unless-stopped
+
+  request-service:
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      DEBUG: "False"
+    ports: !reset []
+    restart: unless-stopped
+
+  campaign-service:
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      DEBUG: "False"
+    ports: !reset []
+    restart: unless-stopped
+
+  notification-service:
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      DEBUG: "False"
+    ports: !reset []
+    restart: unless-stopped
+
+  nginx:
+    ports: !override
+      - "127.0.0.1:18080:80"
+    restart: unless-stopped
+
+  jenkins:
+    profiles:
+      - local-jenkins
