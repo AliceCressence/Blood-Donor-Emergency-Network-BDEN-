@@ -10,7 +10,7 @@ pipeline {
     environment {
         COMPOSE_PROJECT_NAME = 'bden-ci'
         DJANGO_SETTINGS_MODULE = 'config.settings.dev'
-        VITE_API_BASE_URL = 'http://localhost:8080'
+        VITE_API_BASE_URL = 'http://localhost:8000'
         PORT_PREFIX = '1'
     }
 
