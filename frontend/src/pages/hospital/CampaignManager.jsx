@@ -8,58 +8,7 @@ import {
 
 const BLOOD_TYPES = ['A+', 'A−', 'B+', 'B−', 'AB+', 'AB−', 'O+', 'O−']
 
-const INITIAL_CAMPAIGNS = [
-  {
-    id: 1,
-    title: 'World Blood Donor Day Drive',
-    date: '2025-06-14',
-    time: '08:00 – 16:00',
-    location: 'CHU de Yaoundé – Main Hall',
-    slots: 50,
-    registered: 38,
-    bloodTypes: ['O−', 'A+', 'B+'],
-    status: 'active',
-    description: 'Annual World Blood Donor Day campaign open to all compatible donors.',
-    benefit: 'Free malaria test for all donors',
-    responses: [
-      { id: 1, donor: 'Donor #4821', bloodType: 'O−', status: 'confirmed', time: '2 hrs ago' },
-      { id: 2, donor: 'Donor #3302', bloodType: 'A+', status: 'confirmed', time: '4 hrs ago' },
-      { id: 3, donor: 'Donor #5517', bloodType: 'A+', status: 'pending',   time: '5 hrs ago' },
-      { id: 4, donor: 'Donor #2241', bloodType: 'B+', status: 'confirmed', time: '6 hrs ago' },
-    ],
-  },
-  {
-    id: 2,
-    title: 'Mvog-Mbi Community Drive',
-    date: '2025-06-20',
-    time: '09:00 – 14:00',
-    location: 'Mvog-Mbi Community Center',
-    slots: 30,
-    registered: 12,
-    bloodTypes: ['O−', 'O+'],
-    status: 'active',
-    description: 'Community outreach campaign targeting O− and O+ universal donors.',
-    benefit: 'Medical checkup included',
-    responses: [
-      { id: 1, donor: 'Donor #1102', bloodType: 'O−', status: 'confirmed', time: '1 day ago' },
-      { id: 2, donor: 'Donor #7743', bloodType: 'O+', status: 'pending',   time: '1 day ago' },
-    ],
-  },
-  {
-    id: 3,
-    title: 'Bastos Quarterly Drive',
-    date: '2025-04-05',
-    time: '08:00 – 15:00',
-    location: 'Clinique Bastos',
-    slots: 40,
-    registered: 40,
-    bloodTypes: ['A+', 'B+', 'AB+'],
-    status: 'completed',
-    description: 'Quarterly planned drive — fully subscribed.',
-    benefit: 'Certificate of recognition',
-    responses: [],
-  },
-]
+const INITIAL_CAMPAIGNS = []
 
 const EMPTY_FORM = {
   title: '', date: '', time: '', location: '',
@@ -412,9 +361,10 @@ export default function CampaignManager() {
             </button>
           ))}
           {visible.length === 0 && (
-            <div className="text-center py-12 text-neutral-400">
-              <Calendar size={28} className="mx-auto mb-2 opacity-30" />
-              <p className="text-sm">No campaigns here.</p>
+            <div className="rounded-2xl border border-dashed border-neutral-200 bg-white p-8 text-center text-neutral-400 dark:border-white/10 dark:bg-warm-950/70">
+              <Calendar size={28} className="mx-auto mb-2 opacity-40" />
+              <p className="text-sm font-semibold text-neutral-600 dark:text-warm-300">No campaigns yet</p>
+              <p className="mt-1 text-xs">Create your first campaign when the facility is ready to mobilize donors.</p>
             </div>
           )}
         </div>

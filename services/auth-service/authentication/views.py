@@ -34,6 +34,25 @@ def user_payload(user, **extra):
         "gender": user.gender,
         "authProvider": user.auth_provider,
     }
+    if user.is_hospital():
+        try:
+            registration = user.hospital_registration
+        except HospitalRegistration.DoesNotExist:
+            registration = None
+        if registration:
+            payload.update(
+                {
+                    "facilityName": registration.facility_name,
+                    "facilityType": registration.facility_type,
+                    "registrationNumber": registration.registration_number,
+                    "address": registration.address,
+                    "city": registration.city,
+                    "region": registration.region,
+                    "phone": registration.contact_phone,
+                    "contactPhone": registration.contact_phone,
+                    "verificationStatus": registration.verification_status,
+                }
+            )
     payload.update(extra)
     return payload
 
@@ -276,6 +295,37 @@ class MeView(APIView):
                 return Response({"gender": "Unsupported gender value."}, status=status.HTTP_400_BAD_REQUEST)
             request.user.gender = gender
             request.user.save(update_fields=["gender", "updated_at"])
+        if request.user.is_hospital():
+            try:
+                registration = request.user.hospital_registration
+            except HospitalRegistration.DoesNotExist:
+                registration = None
+            if not registration:
+                return Response({"detail": "We could not find your hospital profile yet."}, status=status.HTTP_404_NOT_FOUND)
+            editable_fields = {
+                "facility_name": "facility_name",
+                "facilityName": "facility_name",
+                "facility_type": "facility_type",
+                "facilityType": "facility_type",
+                "address": "address",
+                "city": "city",
+                "region": "region",
+                "contact_phone": "contact_phone",
+                "contactPhone": "contact_phone",
+                "phone": "contact_phone",
+            }
+            changed_fields = []
+            for incoming, model_field in editable_fields.items():
+                if incoming not in request.data:
+                    continue
+                value = request.data.get(incoming, "")
+                if model_field == "facility_type" and value and value not in HospitalRegistration.FacilityType.values:
+                    return Response({"facility_type": "Unsupported facility type."}, status=status.HTTP_400_BAD_REQUEST)
+                setattr(registration, model_field, value)
+                if model_field not in changed_fields:
+                    changed_fields.append(model_field)
+            if changed_fields:
+                registration.save(update_fields=changed_fields)
         return Response({"user": user_payload(request.user)})
 
 

@@ -243,6 +243,78 @@ code, pre, kbd, .mono {
   }
 }
 
+.dark {
+  color-scheme: dark;
+}
+
+.dark body {
+  background-color: #11100d;
+  color: #f5f4ef;
+}
+
+.dark .bg-warm-50,
+.dark .bg-neutral-50,
+.dark .bg-gray-50\/50 {
+  background-color: #15130f;
+}
+
+.dark .bg-white,
+.dark .card,
+.dark .bg-white\/90,
+.dark .bg-white\/95 {
+  background-color: #211f1a;
+}
+
+.dark .border-warm-100,
+.dark .border-warm-200,
+.dark .border-neutral-100,
+.dark .border-neutral-200,
+.dark .border-white\/70 {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .text-warm-950,
+.dark .text-warm-900,
+.dark .text-neutral-900,
+.dark .text-neutral-800,
+.dark .text-neutral-700 {
+  color: #f7f4ed;
+}
+
+.dark .text-warm-700,
+.dark .text-warm-600,
+.dark .text-warm-500,
+.dark .text-neutral-600,
+.dark .text-neutral-500 {
+  color: #c8c2b6;
+}
+
+.dark .text-warm-400,
+.dark .text-neutral-400 {
+  color: #9b9488;
+}
+
+.dark .bg-warm-100,
+.dark .bg-neutral-100,
+.dark .bg-neutral-50 {
+  background-color: #2d2922;
+}
+
+.dark .hover\:bg-warm-100:hover,
+.dark .hover\:bg-neutral-50:hover,
+.dark .hover\:bg-neutral-100:hover {
+  background-color: #312d26;
+}
+
+.dark .input,
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: #211f1a;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #f7f4ed;
+}
+
 /* ─── UTILITIES ──────────────────────────────────────────────── */
 @layer utilities {
   .text-balance   { text-wrap: balance; }

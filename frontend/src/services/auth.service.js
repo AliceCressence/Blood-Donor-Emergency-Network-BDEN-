@@ -25,7 +25,14 @@ function normalizeUser(data) {
     isVerified: user.isVerified ?? data.is_verified ?? false,
     name: user.name || data.name || '',
     phone: user.phone || data.phone || '',
+    contactPhone: user.contactPhone || data.contact_phone || data.contactPhone || user.phone || data.phone || '',
     city: user.city || data.city || '',
+    region: user.region || data.region || '',
+    address: user.address || data.address || '',
+    facilityName: user.facilityName || data.facility_name || data.facilityName || '',
+    facilityType: user.facilityType || data.facility_type || data.facilityType || '',
+    registrationNumber: user.registrationNumber || data.registration_number || data.registrationNumber || '',
+    verificationStatus: user.verificationStatus || data.verification_status || data.verificationStatus || '',
     bloodType: user.bloodType || data.bloodType || data.blood_type || '',
     gender: user.gender || data.gender || '',
     authProvider: user.authProvider || data.auth_provider || (user.google_id ? 'google' : 'email'),
@@ -126,6 +133,22 @@ export const authService = {
     }
   },
 
+  updateHospitalProfile: async (payload) => {
+    try {
+      const { data } = await api.patch('/api/auth/me/', {
+        facilityName: payload.facilityName || '',
+        facilityType: payload.facilityType || '',
+        address: payload.address || '',
+        city: payload.city || '',
+        region: payload.region || '',
+        contactPhone: payload.contactPhone || payload.phone || '',
+      })
+      return normalizeUser(data)
+    } catch (error) {
+      throw new Error(errorMessage(error), { cause: error })
+    }
+  },
+
   updateDonorProfile: async (payload) => {
     try {
       const access = localStorage.getItem('bden_token')
@@ -188,6 +211,24 @@ export const authService = {
         refresh: data.refresh,
         token: data.access,
       }
+    } catch (error) {
+      throw new Error(errorMessage(error), { cause: error })
+    }
+  },
+
+  listPendingHospitals: async () => {
+    try {
+      const { data } = await api.get('/api/admin/hospitals/pending/')
+      return data.results || []
+    } catch (error) {
+      throw new Error(errorMessage(error), { cause: error })
+    }
+  },
+
+  verifyHospital: async (userId, action, reason = '') => {
+    try {
+      const { data } = await api.post(`/api/admin/hospitals/${userId}/verify/`, { action, reason })
+      return data
     } catch (error) {
       throw new Error(errorMessage(error), { cause: error })
     }

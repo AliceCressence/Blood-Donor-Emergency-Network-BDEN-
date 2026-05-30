@@ -4,16 +4,11 @@ import { Link } from 'react-router-dom'
 import {
   AlertCircle, CalendarDays, Users, TrendingUp,
   Clock, CheckCircle, ChevronRight,
-  MapPin, Plus, Activity
+  MapPin, Plus
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { requestApi } from '../../services/app.service'
 import { CardShimmer, EmptyState } from '../../components/shared/DataStates'
-
-const MOCK_CAMPAIGNS = [
-  { name: 'May Drive 2026',  types: ['O+','A+'], target: 120, current: 74, date: 'May 20' },
-  { name: 'World Blood Day', types: ['All'],     target: 200, current: 31, date: 'Jun 14' },
-]
 
 const STATUS_STYLES = {
   active:    { bg: 'bg-blood-50',  text: 'text-blood-700',  border: 'border-blood-200',  dot: 'bg-blood-500 animate-pulse', label: 'Active'    },
@@ -85,9 +80,9 @@ export default function HospitalDashboard() {
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard icon={AlertCircle}  label="Active requests"    value={activeCount}    sub={`${criticalCount} critical right now`}     color="blood" />
-        <StatCard icon={CalendarDays} label="Running campaigns"  value="2"    sub="351 total donors targeted" color="teal"  />
-        <StatCard icon={Users}        label="Donors in radius"   value="847"  sub="Within 10 km"              color="blue"  />
-        <StatCard icon={TrendingUp}   label="Donations received" value="142"  sub="This year"                 color="amber" />
+        <StatCard icon={CalendarDays} label="Running campaigns"  value="0"    sub="Campaign service is next" color="teal"  />
+        <StatCard icon={Users}        label="Donors in radius"   value="0"    sub="Appears after matching runs" color="blue"  />
+        <StatCard icon={TrendingUp}   label="Donations received" value="0"    sub="Verified records will appear here" color="amber" />
       </div>
 
       {/* Bottom grid */}
@@ -151,36 +146,9 @@ export default function HospitalDashboard() {
             </Link>
           </div>
           <div className="divide-y divide-warm-100">
-            {MOCK_CAMPAIGNS.map((c, i) => {
-              const pct = Math.round((c.current / c.target) * 100)
-              return (
-                <div key={i} className="px-6 py-5">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-semibold text-warm-900">{c.name}</p>
-                    <span className="flex items-center gap-1 text-xs text-warm-400">
-                      <CalendarDays size={10} /> {c.date}
-                    </span>
-                  </div>
-                  <div className="flex gap-1.5 mb-3">
-                    {c.types.map(t => (
-                      <span key={t} className="px-2 py-0.5 rounded-lg bg-blood-50 text-blood-700
-                                               text-xs font-mono font-semibold border border-blood-100">
-                        {t}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="flex justify-between text-xs text-warm-500 mb-1.5">
-                    <span>{c.current} donors registered</span>
-                    <span>Goal: {c.target}</span>
-                  </div>
-                  <div className="h-2 bg-warm-100 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full bg-gradient-to-r from-teal-500 to-teal-400"
-                      style={{ width: `${pct}%` }} />
-                  </div>
-                  <p className="text-xs text-warm-400 mt-1">{pct}% of goal reached</p>
-                </div>
-              )
-            })}
+            <div className="p-5">
+              <EmptyState icon={CalendarDays} title="No campaigns yet" description="When campaign management is connected, your active drives will appear here." />
+            </div>
           </div>
           <div className="px-6 pb-5">
             <Link to="/hospital/campaigns"
@@ -198,22 +166,8 @@ export default function HospitalDashboard() {
         <div className="px-6 pt-5 pb-4 border-b border-warm-100">
           <h2 className="font-display font-semibold text-warm-900">Recent activity</h2>
         </div>
-        <div className="divide-y divide-warm-100">
-          {[
-            { icon: CheckCircle, color: 'text-teal-500',  bg: 'bg-teal-50',  text: 'Donor responded to O− request',         time: '4 min ago'  },
-            { icon: Activity,    color: 'text-blood-500', bg: 'bg-blood-50', text: 'Emergency request posted for O− blood',  time: '8 min ago'  },
-            { icon: Users,       color: 'text-blue-500',  bg: 'bg-blue-50',  text: '3 new donors registered for May Drive',  time: '1 hr ago'   },
-            { icon: CalendarDays,color: 'text-amber-500', bg: 'bg-amber-50', text: 'World Blood Day campaign published',      time: '2 hrs ago'  },
-            { icon: CheckCircle, color: 'text-teal-500',  bg: 'bg-teal-50',  text: 'B+ emergency request fulfilled',         time: 'Yesterday'  },
-          ].map((item, i) => (
-            <div key={i} className="flex items-center gap-4 px-6 py-3.5">
-              <div className={`w-8 h-8 rounded-xl ${item.bg} flex items-center justify-center flex-shrink-0`}>
-                <item.icon size={14} className={item.color} />
-              </div>
-              <p className="text-sm text-warm-700 flex-1">{item.text}</p>
-              <span className="text-xs text-warm-400 flex-shrink-0">{item.time}</span>
-            </div>
-          ))}
+        <div className="p-5">
+          <EmptyState icon={CheckCircle} title="No activity yet" description="Your team activity will appear here as requests, donations, and campaigns are recorded." />
         </div>
       </div>
 
