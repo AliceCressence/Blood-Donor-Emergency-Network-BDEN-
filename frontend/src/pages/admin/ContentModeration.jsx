@@ -1,6 +1,6 @@
 // src/pages/admin/ContentModeration.jsx
 import { useState } from 'react'
-import { Flag, AlertTriangle, CheckCircle, XCircle, Eye, Filter } from 'lucide-react'
+import { Flag, CheckCircle, XCircle } from 'lucide-react'
 
 const FLAGS = [
   { id: 1, type: 'Emergency request', content: 'Request for rare blood type combination (AB− + O−) simultaneously — unusual', severity: 'medium', reporter: 'System auto-flag', time: '1 hr ago', status: 'open' },

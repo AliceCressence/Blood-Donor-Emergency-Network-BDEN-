@@ -1,8 +1,8 @@
 // src/pages/hospital/CampaignManager.jsx
 import { useState } from 'react'
 import {
-  Calendar, Plus, Users, MapPin, Clock, Edit,
-  Trash2, ChevronRight, CheckCircle, Eye, Share2,
+  Calendar, Plus, Users, MapPin, Clock,
+  Trash2, CheckCircle, Eye, Share2,
   TrendingUp, Droplets, X
 } from 'lucide-react'
 
@@ -97,7 +97,6 @@ function ProgressBar({ registered, slots }) {
 }
 
 function CampaignDetail({ c, onClose, onDelete }) {
-  const pct = Math.min(Math.round((c.registered / c.slots) * 100), 100)
   const confirmed = c.responses.filter(r => r.status === 'confirmed').length
   const pending = c.responses.filter(r => r.status === 'pending').length
 

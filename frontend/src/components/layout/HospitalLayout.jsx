@@ -1,11 +1,12 @@
 // src/components/layout/HospitalLayout.jsx
-import { useState } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   Droplets, LayoutDashboard, AlertCircle,
   CalendarDays, Users, LogOut, Bell, Menu, X, CheckCircle
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { DashboardSplash } from '../shared/DataStates'
 
 const NAV = [
   { to: '/hospital',           icon: LayoutDashboard, label: 'Dashboard',         end: true },
@@ -14,13 +15,8 @@ const NAV = [
   { to: '/hospital/donors',    icon: Users,           label: 'Donor pool'         },
 ]
 
-export default function HospitalLayout() {
-  const { user, logout } = useAuth()
-  const navigate = useNavigate()
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const handleLogout = () => { logout(); navigate('/') }
-
-  const Sidebar = ({ mobile = false }) => (
+function HospitalSidebar({ mobile = false, user, onClose, onLogout }) {
+  return (
     <aside className={`flex flex-col h-full bg-warm-950 text-white
       ${mobile ? 'w-full' : 'w-[260px] min-h-screen fixed left-0 top-0 z-40'}`}>
 
@@ -31,7 +27,7 @@ export default function HospitalLayout() {
           </div>
           <span className="font-display font-bold text-lg">BD<span className="text-blood-500">EN</span></span>
         </div>
-        {mobile && <button onClick={() => setSidebarOpen(false)} className="p-1.5 rounded-lg hover:bg-white/10"><X size={18} /></button>}
+        {mobile && <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/10"><X size={18} /></button>}
       </div>
 
       <div className="px-4 py-3 border-b border-white/10 flex-shrink-0">
@@ -40,7 +36,7 @@ export default function HospitalLayout() {
 
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {NAV.map(({ to, icon: Icon, label, end }) => (
-          <NavLink key={to} to={to} end={end} onClick={() => setSidebarOpen(false)}
+          <NavLink key={to} to={to} end={end} onClick={onClose}
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150
                ${isActive ? 'bg-teal-600 text-white' : 'text-warm-400 hover:bg-white/8 hover:text-white'}`}>
@@ -68,20 +64,40 @@ export default function HospitalLayout() {
             <p className="text-sm font-medium text-white truncate">{user?.facilityName || user?.name || 'Hospital'}</p>
             <p className="text-xs text-warm-500 truncate">{user?.city || 'Yaoundé'}</p>
           </div>
-          <button onClick={handleLogout} className="p-1.5 rounded-lg text-warm-500 hover:text-blood-400 hover:bg-white/10 transition-colors flex-shrink-0">
+          <button onClick={onLogout} className="p-1.5 rounded-lg text-warm-500 hover:text-blood-400 hover:bg-white/10 transition-colors flex-shrink-0">
             <LogOut size={14} />
           </button>
         </div>
       </div>
     </aside>
   )
+}
+
+export default function HospitalLayout() {
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [showSplash, setShowSplash] = useState(location.pathname.endsWith('/dashboard'))
+  const handleLogout = () => { logout(); navigate('/') }
+
+  useEffect(() => {
+    if (!location.pathname.endsWith('/dashboard')) return undefined
+    const start = setTimeout(() => setShowSplash(true), 0)
+    const timer = setTimeout(() => setShowSplash(false), 1150)
+    return () => {
+      clearTimeout(start)
+      clearTimeout(timer)
+    }
+  }, [location.pathname])
 
   return (
     <div className="flex min-h-screen bg-warm-50">
-      <div className="hidden lg:block w-[260px] flex-shrink-0"><Sidebar /></div>
+      <DashboardSplash show={showSplash} />
+      <div className="hidden lg:block w-[260px] flex-shrink-0"><HospitalSidebar user={user} onClose={() => setSidebarOpen(false)} onLogout={handleLogout} /></div>
       {sidebarOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
-          <div className="w-[260px]"><Sidebar mobile /></div>
+          <div className="w-[260px]"><HospitalSidebar mobile user={user} onClose={() => setSidebarOpen(false)} onLogout={handleLogout} /></div>
           <div className="flex-1 bg-black/50" onClick={() => setSidebarOpen(false)} />
         </div>
       )}

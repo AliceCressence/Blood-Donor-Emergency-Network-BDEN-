@@ -1,12 +1,17 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from unfold.admin import ModelAdmin
+from unfold.forms import AdminPasswordChangeForm, UserChangeForm, UserCreationForm
 
+from .forms import UserChangeForm, UserCreationForm
 from .models import HospitalRegistration, User
 
 
 @admin.register(User)
 class UserAdmin(DjangoUserAdmin, ModelAdmin):
+    form = UserChangeForm
+    add_form = UserCreationForm
+    change_password_form = AdminPasswordChangeForm
     ordering = ("email",)
     list_display = ("email", "role", "is_verified", "is_active", "is_staff", "created_at")
     list_filter = ("role", "is_verified", "is_active", "is_staff")

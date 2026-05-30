@@ -1,6 +1,8 @@
-import { useState, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Shield, Download, Share2, CheckCircle, Smartphone, MapPin } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { donorApi } from '../../services/app.service'
+import { CardShimmer, ErrorState } from '../../components/shared/DataStates'
 
 const COMPATIBILITY = {
   'O−': ['O−', 'O+', 'A−', 'A+', 'B−', 'B+', 'AB−', 'AB+'],
@@ -13,16 +15,16 @@ const COMPATIBILITY = {
   'AB+': ['AB+']
 }
 
-const MOCK_DONOR = {
-  name: 'Alice Cressence',
-  bloodType: 'A+',
-  donorId: 'BDEN-YDE-00412',
-  status: 'verified',
-  totalDonations: 4,
-  nextEligible: 'July 15, 2026',
-  donorSince: 'February 2025',
-  city: 'Yaoundé',
-  phone: '+237 653 93 68 99',
+const formatDate = (value, fallback = 'Not set yet') => {
+  if (!value) return fallback
+  return new Date(value).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+const normalizeBloodType = value => (value || 'Unset').replace('-', '−')
+
+const initialsFromId = value => {
+  if (!value) return 'BDEN'
+  return value.replace(/-/g, '').slice(-8).toUpperCase()
 }
 
 // ─── Tilt + Flip Card Wrapper ────────────────────────────────────────────────
@@ -178,7 +180,7 @@ function CardFront({ donor }) {
 // ─── Card Back ───────────────────────────────────────────────────────────────
 function CardBack({ donor }) {
   const serialId = (donor.donorId.replace(/-/g, '') + 'X9Q').substring(0, 16)
-    .toUpperCase().replace(/(.{4})/g, '\ ').trim()
+    .toUpperCase().replace(/(.{4})/g, '$1 ').trim()
   
   return (
     <div
@@ -241,18 +243,258 @@ function CardBack({ donor }) {
 export default function DonorCard() {
   const { user } = useAuth()
   const [flipped, setFlipped] = useState(false)
+  const [profile, setProfile] = useState(null)
+  const [card, setCard] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
 
-  const donor = {
-    ...MOCK_DONOR,
-    name: user?.name || MOCK_DONOR.name,
-    bloodType: user?.bloodType || MOCK_DONOR.bloodType,
+  const loadCard = useCallback(async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const [profileData, cardData] = await Promise.all([
+        donorApi.getProfile(),
+        donorApi.getCard().catch(() => null),
+      ])
+      setProfile(profileData)
+      setCard(cardData)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => { loadCard() }, 0)
+    return () => window.clearTimeout(timer)
+  }, [loadCard])
+
+  const donor = useMemo(() => {
+    const donorId = card?.card_number || `BDEN-${initialsFromId(user?.id)}`
+    return {
+      name: card?.donor_name || profile?.full_name || user?.name || user?.email || 'BDEN donor',
+      bloodType: normalizeBloodType(card?.blood_type || profile?.blood_type || user?.bloodType),
+      donorId,
+      status: profile?.blood_type_verified ? 'Verified donor' : 'Registered donor',
+      totalDonations: card?.total_donations ?? profile?.total_donations ?? 0,
+      totalVolume: card?.total_volume_ml ?? profile?.total_volume_ml ?? 0,
+      nextEligible: formatDate(card?.next_eligible_date || profile?.next_eligible_date),
+      donorSince: formatDate(card?.issued_at || profile?.created_at, 'Recently joined'),
+      city: profile?.city || 'City not set',
+      phone: profile?.phone || 'Phone not set',
+    }
+  }, [card, profile, user])
+
+  const showNotice = message => {
+    setNotice(message)
+    window.setTimeout(() => setNotice(''), 2600)
+  }
+
+  const downloadCard = async () => {
+    const scale = 3
+    const width = 960
+    const height = 600
+    const canvas = document.createElement('canvas')
+    canvas.width = width * scale
+    canvas.height = height * scale
+    const ctx = canvas.getContext('2d')
+    ctx.scale(scale, scale)
+
+    const roundRect = (x, y, w, h, r) => {
+      ctx.beginPath()
+      ctx.moveTo(x + r, y)
+      ctx.arcTo(x + w, y, x + w, y + h, r)
+      ctx.arcTo(x + w, y + h, x, y + h, r)
+      ctx.arcTo(x, y + h, x, y, r)
+      ctx.arcTo(x, y, x + w, y, r)
+      ctx.closePath()
+    }
+
+    const label = (text, x, y) => {
+      ctx.save()
+      ctx.globalAlpha = 0.44
+      ctx.fillStyle = '#ffffff'
+      ctx.font = '700 13px Arial'
+      ctx.letterSpacing = '3px'
+      ctx.fillText(text, x, y)
+      ctx.restore()
+    }
+
+    const fitText = (text, x, y, maxWidth, initialSize, weight = 700) => {
+      let size = initialSize
+      ctx.font = `${weight} ${size}px Arial`
+      while (ctx.measureText(text).width > maxWidth && size > 18) {
+        size -= 2
+        ctx.font = `${weight} ${size}px Arial`
+      }
+      ctx.fillText(text, x, y)
+    }
+
+    roundRect(0, 0, width, height, 38)
+    ctx.clip()
+
+    const bg = ctx.createLinearGradient(0, 0, width, height)
+    bg.addColorStop(0, '#1a0a0a')
+    bg.addColorStop(0.42, '#2d0f0f')
+    bg.addColorStop(1, '#8B0000')
+    ctx.fillStyle = bg
+    ctx.fillRect(0, 0, width, height)
+
+    ctx.save()
+    ctx.globalAlpha = 0.06
+    ctx.strokeStyle = '#ffffff'
+    for (let x = -80; x < width + 80; x += 56) {
+      for (let y = -80; y < height + 80; y += 56) {
+        ctx.beginPath()
+        ctx.arc(x, y, 24, 0, Math.PI * 2)
+        ctx.stroke()
+        ctx.beginPath()
+        ctx.arc(x, y, 12, 0, Math.PI * 2)
+        ctx.stroke()
+      }
+    }
+    ctx.restore()
+
+    ctx.save()
+    ctx.globalAlpha = 0.08
+    ctx.fillStyle = '#ffffff'
+    ctx.beginPath()
+    ctx.arc(760, 120, 170, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.beginPath()
+    ctx.arc(855, 510, 250, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.restore()
+
+    roundRect(56, 48, 52, 52, 14)
+    ctx.fillStyle = 'rgba(255,255,255,.10)'
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(255,255,255,.22)'
+    ctx.stroke()
+    try {
+      const logo = new Image()
+      logo.src = '/favicon.svg'
+      await logo.decode()
+      ctx.drawImage(logo, 68, 60, 28, 28)
+    } catch {
+      ctx.fillStyle = '#e51111'
+      ctx.beginPath()
+      ctx.arc(82, 74, 14, 0, Math.PI * 2)
+      ctx.fill()
+    }
+
+    ctx.fillStyle = '#ffffff'
+    ctx.font = '800 25px Arial'
+    ctx.fillText('BDEN', 122, 70)
+    ctx.save()
+    ctx.globalAlpha = 0.42
+    ctx.font = '700 12px Arial'
+    ctx.fillText('BLOOD DONOR NETWORK', 122, 93)
+    ctx.restore()
+
+    roundRect(750, 50, 148, 34, 17)
+    ctx.fillStyle = 'rgba(16,185,129,.18)'
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(110,231,183,.34)'
+    ctx.stroke()
+    ctx.fillStyle = '#34d399'
+    ctx.font = '800 12px Arial'
+    ctx.fillText(donor.status.toUpperCase(), 768, 72)
+
+    const blood = ctx.createLinearGradient(638, 130, 850, 282)
+    blood.addColorStop(0, '#ff4444')
+    blood.addColorStop(1, '#ff9a9a')
+    ctx.fillStyle = blood
+    ctx.font = '900 120px Arial'
+    ctx.textAlign = 'right'
+    ctx.fillText(donor.bloodType, 870, 278)
+    ctx.textAlign = 'left'
+    label('BLOOD TYPE', 723, 315)
+
+    ctx.fillStyle = 'rgba(255,255,255,.82)'
+    ctx.font = '700 34px Arial'
+    ctx.fillText(donor.donorId.replace(/-/g, ' '), 56, 325)
+
+    label('GIVES TO', 56, 370)
+    let pillX = 134
+    ;(COMPATIBILITY[donor.bloodType] || []).slice(0, 8).forEach(type => {
+      roundRect(pillX, 350, 43, 25, 7)
+      ctx.fillStyle = 'rgba(255,255,255,.12)'
+      ctx.fill()
+      ctx.fillStyle = '#ffffff'
+      ctx.font = '800 12px Arial'
+      ctx.fillText(type, pillX + 10, 367)
+      pillX += 49
+    })
+
+    label('CARDHOLDER NAME', 56, 440)
+    ctx.fillStyle = '#ffffff'
+    fitText(donor.name.toUpperCase(), 56, 482, 500, 30, 800)
+
+    label('VALID FROM', 620, 440)
+    ctx.fillStyle = 'rgba(255,255,255,.90)'
+    fitText(donor.donorSince, 620, 482, 140, 22, 700)
+    label('GIFTS', 802, 440)
+    ctx.fillStyle = 'rgba(255,255,255,.90)'
+    ctx.font = '800 24px Arial'
+    ctx.fillText(String(donor.totalDonations).padStart(2, '0'), 802, 482)
+
+    ctx.save()
+    ctx.globalAlpha = 0.38
+    ctx.strokeStyle = '#ffffff'
+    ctx.beginPath()
+    ctx.moveTo(56, 525)
+    ctx.lineTo(904, 525)
+    ctx.stroke()
+    ctx.font = '700 13px Arial'
+    ctx.fillStyle = '#ffffff'
+    ctx.fillText(`BDEN NETWORK · CAMEROON · ${donor.city}`, 56, 556)
+    ctx.restore()
+
+    canvas.toBlob(blob => {
+      if (!blob) {
+        showNotice('Could not prepare the PNG. Please try again.')
+        return
+      }
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${donor.donorId || 'bden-donor-card'}.png`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+      showNotice('Card downloaded as a PNG.')
+    }, 'image/png', 1)
+  }
+
+  const shareCard = async () => {
+    const text = `${donor.name} · ${donor.bloodType} · ${donor.donorId}`
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'My BDEN donor card', text, url: window.location.href })
+        return
+      }
+      await navigator.clipboard.writeText(text)
+      showNotice('Card details copied to clipboard.')
+    } catch {
+      showNotice('Sharing was cancelled.')
+    }
+  }
+
+  if (loading) {
+    return <div className="max-w-2xl mx-auto"><CardShimmer rows={8} /></div>
   }
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">
+      {error && <ErrorState message={error} onRetry={loadCard} />}
       <div>
         <h1 className="font-display text-2xl font-bold text-neutral-900">Virtual Donor Card</h1>
         <p className="text-neutral-500 text-sm mt-1">Your digital identity as a BDEN registered donor.</p>
+        {notice && <p className="text-xs font-semibold text-emerald-700 mt-2">{notice}</p>}
       </div>
 
       <div className="space-y-3">
@@ -268,11 +510,11 @@ export default function DonorCard() {
       </div>
 
       <div className="flex gap-3">
-        <button className="flex-1 flex items-center justify-center gap-2 bg-blood-600 hover:bg-blood-700 text-white text-sm font-semibold py-3 px-4 rounded-xl transition-colors">
+        <button onClick={downloadCard} className="flex-1 flex items-center justify-center gap-2 bg-blood-600 hover:bg-blood-700 text-white text-sm font-semibold py-3 px-4 rounded-xl transition-colors">
           <Download size={16} />
           Download Card
         </button>
-        <button className="flex-1 flex items-center justify-center gap-2 bg-neutral-900 hover:bg-neutral-800 text-white text-sm font-semibold py-3 px-4 rounded-xl transition-colors">
+        <button onClick={shareCard} className="flex-1 flex items-center justify-center gap-2 bg-neutral-900 hover:bg-neutral-800 text-white text-sm font-semibold py-3 px-4 rounded-xl transition-colors">
           <Share2 size={16} />
           Share
         </button>
@@ -286,8 +528,9 @@ export default function DonorCard() {
           {[
             { label: 'Donor ID',        value: donor.donorId,                mono: true  },
             { label: 'Blood Type',      value: donor.bloodType,              mono: true  },
-            { label: 'Status',          value: 'Verified Donor',             badge: true },
-            { label: 'Total Donations', value: `${donor.totalDonations} donations`       },
+            { label: 'Status',          value: donor.status,                 badge: true },
+            { label: 'Total Donations', value: `${donor.totalDonations} donation${donor.totalDonations === 1 ? '' : 's'}` },
+            { label: 'Total Volume',    value: `${donor.totalVolume} ml`                 },
             { label: 'Next Eligible',   value: donor.nextEligible                        },
             { label: 'Member Since',    value: donor.donorSince                          },
           ].map((item, i) => (

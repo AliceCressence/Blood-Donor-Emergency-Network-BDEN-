@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { MapPin, Building2, Award, Calendar, Users, Droplets } from 'lucide-react'
+import { Building2, Award, Calendar } from 'lucide-react'
 
 // Fix Leaflet default marker icon broken by Vite
 delete L.Icon.Default.prototype._getIconUrl

@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import {
   Users, Droplets, MapPin, CheckCircle,
-  Search, Filter, TrendingUp, Clock, Phone
+  Search, TrendingUp, Clock
 } from 'lucide-react'
 
 const BLOOD_TYPES = ['All', 'A+', 'A−', 'B+', 'B−', 'AB+', 'AB−', 'O+', 'O−']

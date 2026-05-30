@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  Heart, Clock, Award, Zap, AlertCircle, MapPin,
+  Heart, Clock, Award, AlertCircle, MapPin,
   ChevronRight, CheckCircle, Calendar, Droplets,
   TrendingUp, ArrowRight, Building2
 } from 'lucide-react'
@@ -67,7 +67,6 @@ export default function DonorDashboard() {
   const { user } = useAuth()
   const [respondedToEmergency, setRespondedToEmergency] = useState(false)
 
-  const firstName = user?.name?.split(' ')[0] || 'Donor'
   const nextEligible = 'May 10, 2026'
   const daysUntilEligible = 0 // 0 = eligible now
 

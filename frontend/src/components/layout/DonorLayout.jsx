@@ -13,6 +13,7 @@ import {
   X,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { DashboardSplash } from '../shared/DataStates'
 
 const navItems = [
   { path: '/donor/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -81,6 +82,8 @@ export default function DonorLayout() {
   const navigate                        = useNavigate()
   const location                        = useLocation()
   const isMapView                       = location.pathname === '/donor/map'
+  const isDashboard                     = location.pathname.endsWith('/dashboard')
+  const [showSplash, setShowSplash]     = useState(isDashboard)
 
   // Close drop-up on outside click
   useEffect(() => {
@@ -92,6 +95,16 @@ export default function DonorLayout() {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  useEffect(() => {
+    if (!isDashboard) return
+    const start = setTimeout(() => setShowSplash(true), 0)
+    const timer = setTimeout(() => setShowSplash(false), 1150)
+    return () => {
+      clearTimeout(start)
+      clearTimeout(timer)
+    }
+  }, [isDashboard])
 
   const handleLogoutConfirmed = () => {
     setShowSignOutModal(false)
@@ -256,6 +269,7 @@ export default function DonorLayout() {
       </div>
 
       {/* Sign-out modal */}
+      <DashboardSplash show={showSplash} />
       {showSignOutModal && (
         <SignOutModal
           onConfirm={handleLogoutConfirmed}

@@ -5,7 +5,7 @@ import {
   Droplets, AlertCircle, Heart, MapPin, Shield, Users,
   Building2, ChevronRight, Clock, CheckCircle, ArrowRight,
   TrendingUp, Zap, BookOpen, Phone, Mail, Globe,
-  Star, Activity, Award, XCircle
+  Activity, Award, XCircle
 } from 'lucide-react'
 
 // ─── DATA ────────────────────────────────────────────────────────

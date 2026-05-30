@@ -2,6 +2,7 @@ from django.http import JsonResponse
 from django.urls import path
 from django_prometheus import exports
 from django.contrib import admin
+from . import admin_overrides  # noqa: F401
 
 
 def health_check(_request):
