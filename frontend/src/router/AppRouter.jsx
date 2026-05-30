@@ -31,6 +31,7 @@ import HospitalDashboard from '../pages/hospital/HospitalDashboard'
 import EmergencyRequest  from '../pages/hospital/EmergencyRequest'
 import CampaignManager   from '../pages/hospital/CampaignManager'
 import DonorPool         from '../pages/hospital/DonorPool'
+import HospitalProfile   from '../pages/hospital/HospitalProfile'
 
 // Admin pages
 import AdminDashboard       from '../pages/admin/AdminDashboard'
@@ -74,6 +75,7 @@ export default function AppRouter() {
             <Route path="/hospital/emergency" element={<EmergencyRequest />} />
             <Route path="/hospital/campaigns" element={<CampaignManager />} />
             <Route path="/hospital/donors"    element={<DonorPool />} />
+            <Route path="/hospital/profile"   element={<HospitalProfile />} />
           </Route>
         </Route>
 

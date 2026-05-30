@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { DashboardSplash } from '../shared/DataStates'
+import ThemeToggle from '../shared/ThemeToggle'
 
 const navItems = [
   { path: '/donor/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -263,6 +264,7 @@ export default function DonorLayout() {
           }`}
         >
           <div className={isMapView ? 'h-full' : 'p-6 h-full'}>
+            {!isMapView && <div className="mb-4 flex justify-end"><ThemeToggle /></div>}
             <Outlet context={{ collapsed }} />
           </div>
         </main>

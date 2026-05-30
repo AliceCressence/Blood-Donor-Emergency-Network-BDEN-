@@ -6,7 +6,7 @@ export function Shimmer({ className = '' }) {
 
 export function CardShimmer({ rows = 3 }) {
   return (
-    <div className="bg-white rounded-2xl border border-warm-200 shadow-card p-5 space-y-4">
+    <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-warm-200 dark:border-white/10 shadow-card p-5 space-y-4">
       <div className="flex items-center gap-3">
         <Shimmer className="w-11 h-11 rounded-xl" />
         <div className="flex-1 space-y-2">
@@ -21,12 +21,12 @@ export function CardShimmer({ rows = 3 }) {
 
 export function EmptyState({ icon: Icon = CheckCircle, title, description, action }) {
   return (
-    <div className="bg-white rounded-2xl border border-warm-200 shadow-card p-8 text-center transition-all duration-300">
-      <div className="w-12 h-12 rounded-2xl bg-warm-100 flex items-center justify-center mx-auto mb-4">
-        <Icon size={22} className="text-warm-500" />
+    <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-warm-200 dark:border-white/10 shadow-card p-8 text-center transition-all duration-300">
+      <div className="w-12 h-12 rounded-2xl bg-warm-100 dark:bg-white/5 flex items-center justify-center mx-auto mb-4">
+        <Icon size={22} className="text-warm-500 dark:text-neutral-400" />
       </div>
-      <p className="font-display font-semibold text-warm-900">{title}</p>
-      {description && <p className="text-sm text-warm-500 max-w-sm mx-auto mt-1">{description}</p>}
+      <p className="font-display font-semibold text-warm-900 dark:text-white">{title}</p>
+      {description && <p className="text-sm text-warm-500 dark:text-neutral-400 max-w-sm mx-auto mt-1">{description}</p>}
       {action && <div className="mt-5">{action}</div>}
     </div>
   )

@@ -63,6 +63,13 @@ export function AuthProvider({ children }) {
 
   const updateUser = async (updates, { persist = true } = {}) => {
     if (persist) {
+      if (user?.role === 'hospital') {
+        const saved = await authService.updateHospitalProfile(updates)
+        const updated = { ...user, ...saved, profileComplete: true }
+        setUser(updated)
+        localStorage.setItem('bden_user', JSON.stringify(updated))
+        return updated
+      }
       const authPayload = {}
       if ('gender' in updates) authPayload.gender = updates.gender || ''
       if (Object.keys(authPayload).length) {
