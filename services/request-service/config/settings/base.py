@@ -18,6 +18,8 @@ ALLOWED_HOSTS = [
 INSTALLED_APPS = [
     "django_prometheus",
     "unfold",
+    "unfold.contrib.filters",
+    "unfold.contrib.forms",
     "django.contrib.admin",
     "django.contrib.sessions",
     "django.contrib.messages",
@@ -25,6 +27,7 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.auth",
     "rest_framework",
+    "drf_yasg",
     "corsheaders",
     "blood_requests",
 ]
@@ -73,7 +76,23 @@ DATABASES = {
 
 REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "blood_requests.authentication.ServiceJWTAuthentication",
+    ],
 }
+
+SIMPLE_JWT = {
+    "SIGNING_KEY": os.environ.get("AUTH_SECRET_KEY", "change-me-auth"),
+    "ALGORITHM": os.environ.get("JWT_ALGORITHM", "HS256"),
+    "USER_ID_CLAIM": "user_id",
+}
+
+REDIS_URL = os.environ.get("REDIS_URL", "redis://127.0.0.1:6379/0")
+CELERY_BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = REDIS_URL
+REQUEST_EXPIRY_MINUTES = int(os.environ.get("REQUEST_EXPIRY_MINUTES", "120"))
+DONOR_SERVICE_URL = os.environ.get("DONOR_SERVICE_URL", "http://donor-service:8002")
+NOTIFICATION_SERVICE_URL = os.environ.get("NOTIFICATION_SERVICE_URL", "http://notification-service:8005")
 
 CORS_ALLOWED_ORIGINS = [
     origin.strip()

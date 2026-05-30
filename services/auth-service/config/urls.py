@@ -33,7 +33,7 @@ urlpatterns = [
     path("api/docs/redoc/", schema_view.with_ui("redoc", cache_timeout=0), name="schema-redoc"),
     path("api/schema.json", schema_view.without_ui(cache_timeout=0), name="schema-json"),
     path("api/auth/", include((auth_urlpatterns, "auth"))),
-    path("api/admin/", include((admin_urlpatterns, "admin"))),
+    path("api/admin/", include((admin_urlpatterns, "admin_api"))),
     path("metrics/", exports.ExportToDjangoView, name="prometheus-metrics"),
     path("health/", health_check, name="health"),
 ]

@@ -1,6 +1,6 @@
 // src/pages/admin/AdminDashboard.jsx
 import { Link } from 'react-router-dom'
-import { Users, Building2, Droplets, Activity, ShieldCheck, Flag, TrendingUp, AlertTriangle, CheckCircle } from 'lucide-react'
+import { Users, Building2, Droplets, Activity, ShieldCheck, Flag, AlertTriangle, CheckCircle } from 'lucide-react'
 
 const STATS = [
   { label: 'Registered Donors',    value: '1,284', delta: '+34 this week',  icon: Users,      color: 'violet' },

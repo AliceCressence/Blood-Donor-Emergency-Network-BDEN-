@@ -6,10 +6,10 @@ ALLOWED_HOSTS = ["*"]
 DATABASES = {
     "default": {
         "ENGINE":   "django.db.backends.postgresql",
-        "NAME":     "bden_request",
-        "USER":     "bden_user",
-        "PASSWORD": "bden_password",
-        "HOST":     "127.0.0.1",
-        "PORT":     "5434",
+        "NAME":     os.environ.get("REQUEST_DB_NAME", "bden_request"),
+        "USER":     os.environ.get("REQUEST_DB_USER", "bden_user"),
+        "PASSWORD": os.environ.get("REQUEST_DB_PASSWORD", "bden_password"),
+        "HOST":     os.environ.get("REQUEST_DB_HOST", "request-db"),
+        "PORT":     os.environ.get("REQUEST_DB_PORT", "5432"),
     }
 }

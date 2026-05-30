@@ -233,6 +233,14 @@ code, pre, kbd, .mono {
   .skeleton {
     @apply bg-warm-200 animate-pulse rounded-lg;
   }
+
+  .shimmer {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(90deg, #f1f0ea 0%, #fafaf8 45%, #f1f0ea 100%);
+    background-size: 220% 100%;
+    animation: shimmer 1.45s ease-in-out infinite;
+  }
 }
 
 /* ─── UTILITIES ──────────────────────────────────────────────── */
@@ -244,4 +252,53 @@ code, pre, kbd, .mono {
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
+}
+
+@keyframes shimmer {
+  0% { background-position: 120% 0; }
+  100% { background-position: -120% 0; }
+}
+
+@keyframes splash-pop {
+  0% { transform: scale(.2); opacity: 0; filter: blur(8px); }
+  35% { transform: scale(1.08); opacity: 1; filter: blur(0); }
+  100% { transform: scale(1.35); opacity: 0; }
+}
+
+@keyframes splash-logo {
+  0% { transform: scale(.72); opacity: 0; }
+  35% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(.98); opacity: 0; }
+}
+
+.blood-splash {
+  position: absolute;
+  width: min(70vw, 520px);
+  aspect-ratio: 1;
+  border-radius: 48% 52% 44% 56%;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(184, 14, 14, .95) 0 13%, transparent 14%),
+    radial-gradient(circle at 28% 42%, rgba(229, 17, 17, .9) 0 7%, transparent 8%),
+    radial-gradient(circle at 70% 34%, rgba(194, 10, 10, .88) 0 9%, transparent 10%),
+    radial-gradient(circle at 38% 76%, rgba(229, 17, 17, .82) 0 10%, transparent 11%),
+    radial-gradient(circle at 80% 72%, rgba(133, 18, 18, .78) 0 6%, transparent 7%),
+    radial-gradient(circle at 50% 50%, rgba(229, 17, 17, .92) 0 36%, transparent 37%);
+  animation: splash-pop 1.15s cubic-bezier(.2, .8, .2, 1) forwards;
+}
+
+.blood-splash::before,
+.blood-splash::after {
+  content: "";
+  position: absolute;
+  inset: -12%;
+  background:
+    radial-gradient(circle at 18% 24%, rgba(229,17,17,.82) 0 2.8%, transparent 3.2%),
+    radial-gradient(circle at 84% 18%, rgba(194,10,10,.75) 0 3.2%, transparent 3.6%),
+    radial-gradient(circle at 12% 76%, rgba(229,17,17,.7) 0 2.2%, transparent 2.7%),
+    radial-gradient(circle at 90% 86%, rgba(133,18,18,.74) 0 2.6%, transparent 3%),
+    radial-gradient(circle at 58% 8%, rgba(229,17,17,.65) 0 1.8%, transparent 2.3%);
+}
+
+.animate-splash-logo {
+  animation: splash-logo 1.15s cubic-bezier(.2, .8, .2, 1) forwards;
 }

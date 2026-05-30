@@ -174,12 +174,19 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.dev
       DEBUG: ${DEBUG:-True}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,request-service}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-change-me-auth}
       REQUEST_SECRET_KEY: ${REQUEST_SECRET_KEY:-change-me-request}
       REQUEST_DB_NAME: ${REQUEST_DB_NAME:-bden_request}
       REQUEST_DB_USER: ${REQUEST_DB_USER:-bden_user}
       REQUEST_DB_PASSWORD: ${REQUEST_DB_PASSWORD:-bden_password}
       REQUEST_DB_HOST: ${REQUEST_DB_HOST:-request-db}
       REQUEST_DB_PORT: ${REQUEST_DB_PORT:-5432}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-api-key}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      DONOR_SERVICE_URL: ${DONOR_SERVICE_URL:-http://donor-service:8002}
+      NOTIFICATION_SERVICE_URL: ${NOTIFICATION_SERVICE_URL:-http://notification-service:8005}
     command: >
       sh -c "python manage.py migrate &&
              python manage.py collectstatic --no-input &&
@@ -188,6 +195,31 @@ services:
       - "${PORT_PREFIX:-}8003:8003"
     depends_on:
       - request-db
+      - redis
+    networks:
+      - bden_network
+
+  request-event-consumer:
+    build:
+      context: ./services/request-service
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      DEBUG: ${DEBUG:-True}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,request-service}
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-change-me-auth}
+      REQUEST_SECRET_KEY: ${REQUEST_SECRET_KEY:-change-me-request}
+      REQUEST_DB_NAME: ${REQUEST_DB_NAME:-bden_request}
+      REQUEST_DB_USER: ${REQUEST_DB_USER:-bden_user}
+      REQUEST_DB_PASSWORD: ${REQUEST_DB_PASSWORD:-bden_password}
+      REQUEST_DB_HOST: ${REQUEST_DB_HOST:-request-db}
+      REQUEST_DB_PORT: ${REQUEST_DB_PORT:-5432}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-api-key}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+    command: python manage.py consume_events
+    depends_on:
+      - request-db
+      - redis
+    restart: unless-stopped
     networks:
       - bden_network
 
@@ -220,12 +252,16 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.dev
       DEBUG: ${DEBUG:-True}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,notification-service}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-change-me-auth}
       NOTIFICATION_SECRET_KEY: ${NOTIFICATION_SECRET_KEY:-change-me-notification}
       NOTIFICATION_DB_NAME: ${NOTIFICATION_DB_NAME:-bden_notification}
       NOTIFICATION_DB_USER: ${NOTIFICATION_DB_USER:-bden_user}
       NOTIFICATION_DB_PASSWORD: ${NOTIFICATION_DB_PASSWORD:-bden_password}
       NOTIFICATION_DB_HOST: ${NOTIFICATION_DB_HOST:-notification-db}
       NOTIFICATION_DB_PORT: ${NOTIFICATION_DB_PORT:-5432}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-api-key}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
     command: >
       sh -c "python manage.py migrate &&
@@ -236,6 +272,30 @@ services:
     depends_on:
       - notification-db
       - redis
+    networks:
+      - bden_network
+
+  notification-event-consumer:
+    build:
+      context: ./services/notification-service
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      DEBUG: ${DEBUG:-True}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,notification-service}
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-change-me-auth}
+      NOTIFICATION_SECRET_KEY: ${NOTIFICATION_SECRET_KEY:-change-me-notification}
+      NOTIFICATION_DB_NAME: ${NOTIFICATION_DB_NAME:-bden_notification}
+      NOTIFICATION_DB_USER: ${NOTIFICATION_DB_USER:-bden_user}
+      NOTIFICATION_DB_PASSWORD: ${NOTIFICATION_DB_PASSWORD:-bden_password}
+      NOTIFICATION_DB_HOST: ${NOTIFICATION_DB_HOST:-notification-db}
+      NOTIFICATION_DB_PORT: ${NOTIFICATION_DB_PORT:-5432}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-api-key}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+    command: python manage.py consume_events
+    depends_on:
+      - notification-db
+      - redis
+    restart: unless-stopped
     networks:
       - bden_network
 

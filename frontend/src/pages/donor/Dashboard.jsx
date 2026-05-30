@@ -1,52 +1,12 @@
-// src/pages/donor/Dashboard.jsx
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  Droplets, Calendar, Award, AlertTriangle,
-  MapPin, Clock, ChevronRight, TrendingUp,
-  Heart, Users, CheckCircle
+  AlertTriangle, Award, Bell, Calendar, CheckCircle, ChevronRight,
+  CreditCard, Droplets, Heart, MapPin, User, Users,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
-
-const MOCK_STATS = {
-  totalDonations: 4,
-  livesImpacted: 12,
-  nextEligible: '2025-07-15',
-  daysUntilEligible: 34,
-  bloodType: 'O−',
-  donorSince: '2023-02-10',
-  streak: 3,
-}
-
-const MOCK_EMERGENCY_REQUESTS = [
-  {
-    id: 1,
-    hospital: 'Hôpital Central Yaoundé',
-    bloodType: 'O−',
-    urgency: 'critical',
-    distance: '2.1 km',
-    postedAgo: '12 min ago',
-    unitsNeeded: 3,
-    reason: 'Emergency surgery',
-  },
-  {
-    id: 2,
-    hospital: 'Clinique de la Cité Verte',
-    bloodType: 'O−',
-    urgency: 'high',
-    distance: '5.4 km',
-    postedAgo: '1 hr ago',
-    unitsNeeded: 2,
-    reason: 'Post-operative care',
-  },
-]
-
-const MOCK_HISTORY = [
-  { id: 1, date: 'Mar 15, 2025', hospital: 'Hôpital Central Yaoundé', type: 'Whole Blood', status: 'verified' },
-  { id: 2, date: 'Nov 22, 2024', hospital: 'CHU de Yaoundé', type: 'Whole Blood', status: 'verified' },
-  { id: 3, date: 'Jul 8, 2024', hospital: 'Clinique de la Cité Verte', type: 'Whole Blood', status: 'verified' },
-  { id: 4, date: 'Feb 10, 2024', hospital: 'Hôpital Central Yaoundé', type: 'Whole Blood', status: 'verified' },
-]
+import { donorApi, requestApi } from '../../services/app.service'
+import { CardShimmer, EmptyState, ErrorState, InfoTip } from '../../components/shared/DataStates'
 
 function StatCard({ icon: Icon, label, value, sub, color = 'blood' }) {
   const colors = {
@@ -56,7 +16,7 @@ function StatCard({ icon: Icon, label, value, sub, color = 'blood' }) {
     blue: 'bg-blue-50 text-blue-600 border-blue-100',
   }
   return (
-    <div className="bg-white rounded-2xl p-5 border border-neutral-100 shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-white rounded-2xl p-5 border border-neutral-100 shadow-sm transition-all duration-300 hover:shadow-md">
       <div className={`w-10 h-10 rounded-xl flex items-center justify-center border mb-4 ${colors[color]}`}>
         <Icon size={20} />
       </div>
@@ -70,148 +30,170 @@ function StatCard({ icon: Icon, label, value, sub, color = 'blood' }) {
 function UrgencyBadge({ level }) {
   const styles = {
     critical: 'bg-red-100 text-red-700 border-red-200',
-    high: 'bg-orange-100 text-orange-700 border-orange-200',
-    moderate: 'bg-amber-100 text-amber-700 border-amber-200',
+    urgent: 'bg-orange-100 text-orange-700 border-orange-200',
+    standard: 'bg-amber-100 text-amber-700 border-amber-200',
   }
-  return (
-    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${styles[level]}`}>
-      {level.toUpperCase()}
-    </span>
-  )
+  return <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${styles[level] || styles.standard}`}>{level.toUpperCase()}</span>
 }
 
 export default function DonorDashboard() {
   const { user } = useAuth()
-  const stats = MOCK_STATS
-  const name = user?.name?.split(' ')[0] || 'Alice'
+  const [profile, setProfile] = useState(null)
+  const [card, setCard] = useState(null)
+  const [requests, setRequests] = useState([])
+  const [donations, setDonations] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const userBloodType = user?.bloodType
 
-  const canDonate = stats.daysUntilEligible <= 0
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const [profileData, cardData, donationData, requestData] = await Promise.all([
+        donorApi.getProfile(),
+        donorApi.getCard().catch(() => null),
+        donorApi.getDonations().catch(() => []),
+        requestApi.list({ status: 'ACTIVE', blood_type: userBloodType?.replace('−', '-') || undefined }).catch(() => []),
+      ])
+      setProfile(profileData)
+      setCard(cardData)
+      setDonations(donationData)
+      setRequests(requestData.slice(0, 4))
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }, [userBloodType])
+
+  useEffect(() => {
+    const timer = setTimeout(() => { load() }, 0)
+    return () => clearTimeout(timer)
+  }, [load])
+
+  const name = useMemo(() => {
+    const full = profile?.full_name || user?.name || user?.email || 'Donor'
+    return full.split(' ')[0]
+  }, [profile, user])
+
+  const totalDonations = profile?.total_donations ?? card?.total_donations ?? 0
+  const livesImpacted = totalDonations * 3
+  const hasDonationHistory = totalDonations > 0
+  const daysUntilEligible = profile?.days_until_eligible ?? 0
+  const canDonate = profile?.is_eligible_to_donate ?? daysUntilEligible <= 0
+  const bloodType = (profile?.blood_type || card?.blood_type || user?.bloodType || 'Unset').replace('-', '−')
+  const welcomeCopy = hasDonationHistory
+    ? <>Your donations have helped an estimated <span className="font-semibold text-blood-600">{livesImpacted} lives</span> so far.</>
+    : <>Your donor profile is ready. When your first donation is verified, your impact will start showing here.</>
+
+  if (loading) {
+    return (
+      <div className="max-w-5xl mx-auto space-y-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[0, 1, 2, 3].map(i => <CardShimmer key={i} rows={2} />)}
+        </div>
+        <div className="grid lg:grid-cols-5 gap-6">
+          <div className="lg:col-span-3"><CardShimmer rows={6} /></div>
+          <div className="lg:col-span-2"><CardShimmer rows={5} /></div>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
-      {/* Header */}
+    <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">
+      {error && <ErrorState message={error} onRetry={load} />}
+
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="font-display text-2xl font-bold text-neutral-900">
-            Good morning, {name} 
-          </h1>
+          <h1 className="font-display text-2xl font-bold text-neutral-900">Good morning, {name}</h1>
           <p className="text-neutral-500 text-sm mt-1">
-            Your donations have impacted <span className="font-semibold text-blood-600">{stats.livesImpacted} lives</span> so far.
+            {welcomeCopy}
           </p>
         </div>
-        <Link
-          to="/donor/map"
-          className="inline-flex items-center gap-2 bg-blood-600 hover:bg-blood-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
-        >
+        <Link to="/donor/map" className="inline-flex items-center gap-2 bg-blood-600 hover:bg-blood-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
           <Droplets size={16} />
-          Find a campaign
+          Find nearby needs
         </Link>
       </div>
 
-      {/* Eligibility banner */}
-      {canDonate ? (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 flex items-center gap-4">
-          <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center shrink-0">
-            <CheckCircle size={20} className="text-emerald-600" />
-          </div>
-          <div className="flex-1">
-            <p className="font-semibold text-emerald-800">You are eligible to donate!</p>
-            <p className="text-sm text-emerald-600">You can donate at any nearby hospital or campaign today.</p>
-          </div>
-          <Link to="/donor/map" className="text-sm font-semibold text-emerald-700 hover:text-emerald-900 flex items-center gap-1">
-            Find campaign <ChevronRight size={14} />
-          </Link>
+      <div className={`${canDonate ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'} border rounded-2xl p-5 flex items-center gap-4`}>
+        <div className={`w-10 h-10 ${canDonate ? 'bg-emerald-100' : 'bg-amber-100'} rounded-xl flex items-center justify-center shrink-0`}>
+          {canDonate ? <CheckCircle size={20} className="text-emerald-600" /> : <Calendar size={20} className="text-amber-600" />}
         </div>
-      ) : (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex items-center gap-4">
-          <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center shrink-0">
-            <Calendar size={20} className="text-amber-600" />
-          </div>
-          <div className="flex-1">
-            <p className="font-semibold text-amber-800">Next donation in {stats.daysUntilEligible} days</p>
-            <p className="text-sm text-amber-600">Eligible from {new Date(stats.nextEligible).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-          </div>
-          <Link to="/donor/card" className="text-sm font-semibold text-amber-700 hover:text-amber-900 flex items-center gap-1">
-            View card <ChevronRight size={14} />
-          </Link>
+        <div className="flex-1">
+          <p className={`font-semibold ${canDonate ? 'text-emerald-800' : 'text-amber-800'}`}>
+            {canDonate ? 'You are eligible to donate!' : `Next donation in ${daysUntilEligible} days`}
+          </p>
+          <p className={`text-sm ${canDonate ? 'text-emerald-600' : 'text-amber-600'}`}>
+            {canDonate ? 'You can respond to nearby compatible requests today.' : `Eligible from ${profile?.next_eligible_date || card?.next_eligible_date || 'your next verified date'}.`}
+          </p>
         </div>
-      )}
-
-      {/* Stats grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={Droplets} label="Total Donations" value={stats.totalDonations} sub="Since Feb 2024" color="blood" />
-        <StatCard icon={Heart} label="Lives Impacted" value={stats.livesImpacted} sub="Est. 3 per donation" color="green" />
-        <StatCard icon={Award} label="Donor Streak" value={`${stats.streak}×`} sub="Consecutive donations" color="amber" />
-        <StatCard icon={Users} label="Blood Type" value={stats.bloodType} sub="Universal donor" color="blue" />
+        <Link to={canDonate ? '/donor/map' : '/donor/card'} className={`text-sm font-semibold ${canDonate ? 'text-emerald-700' : 'text-amber-700'} flex items-center gap-1`}>
+          {canDonate ? 'View needs' : 'View card'} <ChevronRight size={14} />
+        </Link>
       </div>
 
-      {/* Main grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard icon={Droplets} label="Total donations" value={totalDonations} sub={hasDonationHistory ? `${profile?.total_volume_ml || 0} ml recorded` : 'Your first verified donation will appear here'} color="blood" />
+        <StatCard icon={Heart} label="Lives helped" value={hasDonationHistory ? livesImpacted : 'Soon'} sub={hasDonationHistory ? 'Estimated from verified donations' : 'This starts after your first verified donation'} color="green" />
+        <StatCard icon={Award} label="Eligibility" value={canDonate ? 'Ready' : `${daysUntilEligible}d`} sub={canDonate ? 'You can respond when a need fits' : 'Based on donation history'} color="amber" />
+        <StatCard icon={Users} label="Blood type" value={bloodType} sub={profile?.blood_type_verified ? 'Verified' : 'Not verified yet'} color="blue" />
+      </div>
+
       <div className="grid lg:grid-cols-5 gap-6">
-        {/* Emergency requests */}
         <div className="lg:col-span-3 bg-white rounded-2xl border border-neutral-100 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100">
             <div className="flex items-center gap-2">
               <AlertTriangle size={18} className="text-blood-600" />
               <h2 className="font-display font-bold text-neutral-900">Nearby Emergency Requests</h2>
+              <InfoTip>Only active requests from the backend are shown here. Matching will become more precise as your location profile improves.</InfoTip>
             </div>
             <Link to="/donor/map" className="text-xs font-semibold text-blood-600 hover:text-blood-700 flex items-center gap-1">
               View map <ChevronRight size={12} />
             </Link>
           </div>
-          <div className="divide-y divide-neutral-100">
-            {MOCK_EMERGENCY_REQUESTS.map(req => (
-              <div key={req.id} className="px-6 py-4 hover:bg-neutral-50 transition-colors">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-mono text-sm font-bold text-blood-600 bg-blood-50 px-2 py-0.5 rounded-md">
-                        {req.bloodType}
-                      </span>
-                      <UrgencyBadge level={req.urgency} />
+          {requests.length === 0 ? (
+            <div className="p-5">
+              <EmptyState icon={CheckCircle} title="No active nearby requests" description="When hospitals publish compatible requests, they will appear here with the same priority layout." />
+            </div>
+          ) : (
+            <div className="divide-y divide-neutral-100">
+              {requests.map(req => (
+                <Link key={req.id} to={`/donor/requests/${req.id}`} className="block px-6 py-4 hover:bg-neutral-50 transition-colors">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-mono text-sm font-bold text-blood-600 bg-blood-50 px-2 py-0.5 rounded-md">{req.bloodType}</span>
+                        <UrgencyBadge level={req.urgency} />
+                      </div>
+                      <p className="font-medium text-neutral-900 text-sm truncate">{req.hospital}</p>
+                      <p className="text-xs text-neutral-500 mt-0.5">{req.notes || 'Emergency blood request'} · {req.unitsNeeded} unit{req.unitsNeeded > 1 ? 's' : ''} needed</p>
                     </div>
-                    <p className="font-medium text-neutral-900 text-sm truncate">{req.hospital}</p>
-                    <p className="text-xs text-neutral-500 mt-0.5">{req.reason} · {req.unitsNeeded} units needed</p>
+                    <div className="text-right shrink-0">
+                      <div className="flex items-center gap-1 text-xs text-neutral-400 justify-end"><MapPin size={11} /> {req.city || 'Nearby'}</div>
+                      <div className="flex items-center gap-1 text-xs text-neutral-400 justify-end mt-0.5"><Calendar size={11} /> {req.postedAgo}</div>
+                    </div>
                   </div>
-                  <div className="text-right shrink-0">
-                    <div className="flex items-center gap-1 text-xs text-neutral-400 justify-end">
-                      <MapPin size={11} /> {req.distance}
-                    </div>
-                    <div className="flex items-center gap-1 text-xs text-neutral-400 justify-end mt-0.5">
-                      <Clock size={11} /> {req.postedAgo}
-                    </div>
-                    <button className="mt-2 text-xs font-semibold text-blood-600 hover:text-blood-800 transition-colors">
-                      Respond →
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          {MOCK_EMERGENCY_REQUESTS.length === 0 && (
-            <div className="px-6 py-10 text-center text-neutral-400 text-sm">
-              No active requests near you right now.
+                </Link>
+              ))}
             </div>
           )}
         </div>
 
-        {/* Quick actions + Donation history */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Quick actions */}
           <div className="bg-white rounded-2xl border border-neutral-100 shadow-sm p-5">
             <h2 className="font-display font-bold text-neutral-900 mb-4">Quick Actions</h2>
             <div className="space-y-2">
               {[
-                { to: '/donor/card', icon: CreditCard2, label: 'View donor card', color: 'text-blood-600' },
-                { to: '/donor/map', icon: MapPin, label: 'Find campaign near me', color: 'text-blue-600' },
-                { to: '/donor/notifications', icon: Bell2, label: 'Check notifications', color: 'text-amber-600' },
-                { to: '/donor/profile', icon: User2, label: 'Edit profile', color: 'text-neutral-600' },
-              ].map(({ to, label, color }) => (
-                <Link
-                  key={to}
-                  to={to}
-                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-neutral-50 transition-colors group"
-                >
-                  <TrendingUp size={16} className={color} />
+                { to: '/donor/card', icon: CreditCard, label: 'View donor card', color: 'text-blood-600' },
+                { to: '/donor/map', icon: MapPin, label: 'Explore nearby needs', color: 'text-blue-600' },
+                { to: '/donor/notifications', icon: Bell, label: 'Check notifications', color: 'text-amber-600' },
+                { to: '/donor/profile', icon: User, label: 'Edit profile', color: 'text-neutral-600' },
+              ].map(({ to, icon: Icon, label, color }) => (
+                <Link key={to} to={to} className="flex items-center gap-3 p-3 rounded-xl hover:bg-neutral-50 transition-colors group">
+                  <Icon size={16} className={color} />
                   <span className="text-sm font-medium text-neutral-700 group-hover:text-neutral-900 flex-1">{label}</span>
                   <ChevronRight size={14} className="text-neutral-300 group-hover:text-neutral-500 transition-colors" />
                 </Link>
@@ -219,35 +201,33 @@ export default function DonorDashboard() {
             </div>
           </div>
 
-          {/* Donation history preview */}
           <div className="bg-white rounded-2xl border border-neutral-100 shadow-sm overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-100">
               <h2 className="font-display font-bold text-neutral-900 text-sm">Recent Donations</h2>
-              <span className="text-xs text-neutral-400">{stats.totalDonations} total</span>
+              <span className="text-xs text-neutral-400">{totalDonations} total</span>
             </div>
-            <div className="divide-y divide-neutral-100">
-              {MOCK_HISTORY.slice(0, 3).map(item => (
-                <div key={item.id} className="px-5 py-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-semibold text-neutral-800">{item.date}</p>
-                      <p className="text-xs text-neutral-500 truncate max-w-[140px]">{item.hospital}</p>
+            {donations.length === 0 ? (
+              <div className="p-5">
+                <EmptyState icon={Droplets} title="No donations recorded yet" description="Your verified donations will appear here after a facility records them." />
+              </div>
+            ) : (
+              <div className="divide-y divide-neutral-100">
+                {donations.slice(0, 3).map(item => (
+                  <div key={item.id} className="px-5 py-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-semibold text-neutral-800">{new Date(item.donation_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                        <p className="text-xs text-neutral-500 truncate max-w-[160px]">{item.facility_name}</p>
+                      </div>
+                      <span className="flex items-center gap-1 text-xs text-emerald-600 font-medium"><CheckCircle size={11} /> Verified</span>
                     </div>
-                    <span className="flex items-center gap-1 text-xs text-emerald-600 font-medium">
-                      <CheckCircle size={11} /> Verified
-                    </span>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
     </div>
   )
 }
-
-// Inline icon aliases to avoid import issues
-function CreditCard2(props) { return <svg {...props} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> }
-function Bell2(props) { return <svg {...props} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> }
-function User2(props) { return <svg {...props} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> }

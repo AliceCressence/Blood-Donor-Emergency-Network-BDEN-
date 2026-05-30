@@ -1,18 +1,14 @@
 // src/pages/hospital/HospitalDashboard.jsx
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   AlertCircle, CalendarDays, Users, TrendingUp,
-  Clock, CheckCircle, XCircle, ChevronRight,
-  Droplets, MapPin, Plus, Activity
+  Clock, CheckCircle, ChevronRight,
+  MapPin, Plus, Activity
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
-
-const MOCK_REQUESTS = [
-  { id: 1, bloodType: 'O−', urgency: 'Critical',  units: 2, status: 'active',    donors: 3, time: '4 min ago'   },
-  { id: 2, bloodType: 'A+', urgency: 'Urgent',    units: 1, status: 'matched',   donors: 1, time: '2 hrs ago'   },
-  { id: 3, bloodType: 'B+', urgency: 'Standard',  units: 3, status: 'fulfilled', donors: 3, time: 'Yesterday'   },
-  { id: 4, bloodType: 'AB−',urgency: 'Urgent',    units: 1, status: 'expired',   donors: 0, time: '3 days ago'  },
-]
+import { requestApi } from '../../services/app.service'
+import { CardShimmer, EmptyState } from '../../components/shared/DataStates'
 
 const MOCK_CAMPAIGNS = [
   { name: 'May Drive 2026',  types: ['O+','A+'], target: 120, current: 74, date: 'May 20' },
@@ -47,7 +43,19 @@ function StatCard({ icon: Icon, label, value, sub, color }) {
 
 export default function HospitalDashboard() {
   const { user } = useAuth()
+  const [requests, setRequests] = useState([])
+  const [loadingRequests, setLoadingRequests] = useState(true)
   const facilityName = user?.facilityName || 'Your facility'
+
+  useEffect(() => {
+    requestApi.list({ status: 'ACTIVE' })
+      .then(data => setRequests(data.slice(0, 4)))
+      .catch(() => setRequests([]))
+      .finally(() => setLoadingRequests(false))
+  }, [])
+
+  const activeCount = requests.filter(r => r.status === 'active').length
+  const criticalCount = requests.filter(r => r.urgency === 'critical').length
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">
@@ -76,7 +84,7 @@ export default function HospitalDashboard() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={AlertCircle}  label="Active requests"    value="1"    sub="1 critical, 0 urgent"     color="blood" />
+        <StatCard icon={AlertCircle}  label="Active requests"    value={activeCount}    sub={`${criticalCount} critical right now`}     color="blood" />
         <StatCard icon={CalendarDays} label="Running campaigns"  value="2"    sub="351 total donors targeted" color="teal"  />
         <StatCard icon={Users}        label="Donors in radius"   value="847"  sub="Within 10 km"              color="blue"  />
         <StatCard icon={TrendingUp}   label="Donations received" value="142"  sub="This year"                 color="amber" />
@@ -95,7 +103,13 @@ export default function HospitalDashboard() {
             </Link>
           </div>
           <div className="divide-y divide-warm-100">
-            {MOCK_REQUESTS.map((r) => {
+            {loadingRequests && [0, 1, 2].map(i => <div key={i} className="p-4"><CardShimmer rows={1} /></div>)}
+            {!loadingRequests && requests.length === 0 && (
+              <div className="p-5">
+                <EmptyState icon={AlertCircle} title="No active requests yet" description="Once your team posts requests, the most recent ones will appear here." />
+              </div>
+            )}
+            {!loadingRequests && requests.map((r) => {
               const s = STATUS_STYLES[r.status]
               return (
                 <div key={r.id} className="flex items-center gap-4 px-6 py-4">

@@ -1,22 +1,21 @@
 // src/context/AuthContext.jsx
-import { createContext, useCallback, useContext, useState, useEffect } from 'react'
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useCallback, useContext, useState } from 'react'
 import { authService } from '../services/auth.service'
 
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
-  const [user,      setUser]      = useState(null)
-  const [isLoading, setIsLoading] = useState(true)
-
-  // On mount: check for existing session
-  useEffect(() => {
+  const [user, setUser] = useState(() => {
     const stored = localStorage.getItem('bden_user')
-    if (stored) {
-      try { setUser(JSON.parse(stored)) }
-      catch { localStorage.removeItem('bden_user') }
+    if (!stored) return null
+    try { return JSON.parse(stored) }
+    catch {
+      localStorage.removeItem('bden_user')
+      return null
     }
-    setIsLoading(false)
-  }, [])
+  })
+  const [isLoading] = useState(false)
 
   const login = async (email, password) => {
     const data = await authService.login(email, password)

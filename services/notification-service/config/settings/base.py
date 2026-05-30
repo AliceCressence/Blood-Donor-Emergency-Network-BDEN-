@@ -18,6 +18,8 @@ ALLOWED_HOSTS = [
 INSTALLED_APPS = [
     "django_prometheus",
     "unfold",
+    "unfold.contrib.filters",
+    "unfold.contrib.forms",
     "django.contrib.admin",
     "django.contrib.sessions",
     "django.contrib.messages",
@@ -25,6 +27,7 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.auth",
     "rest_framework",
+    "drf_yasg",
     "corsheaders",
     "notifications",
 ]
@@ -76,7 +79,19 @@ CELERY_BROKER_URL  = REDIS_URL
 
 REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "notifications.authentication.ServiceJWTAuthentication",
+    ],
 }
+
+SIMPLE_JWT = {
+    "SIGNING_KEY": os.environ.get("AUTH_SECRET_KEY", "change-me-auth"),
+    "ALGORITHM": os.environ.get("JWT_ALGORITHM", "HS256"),
+    "USER_ID_CLAIM": "user_id",
+}
+
+EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "BDEN <no-reply@bden.local>")
 
 CORS_ALLOWED_ORIGINS = [
     origin.strip()

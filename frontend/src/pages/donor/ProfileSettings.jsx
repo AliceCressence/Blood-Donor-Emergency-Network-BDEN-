@@ -1,9 +1,6 @@
 // src/pages/donor/ProfileSettings.jsx
 import { useState } from 'react'
-import {
-  User, Phone, MapPin, Droplets, Bell,
-  Shield, Eye, EyeOff, Save, CheckCircle, AlertTriangle
-} from 'lucide-react'
+import { Eye, EyeOff, Save, CheckCircle, AlertTriangle } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 
 const BLOOD_TYPES = ['A+', 'A−', 'B+', 'B−', 'AB+', 'AB−', 'O+', 'O−']
