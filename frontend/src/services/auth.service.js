@@ -225,6 +225,15 @@ export const authService = {
     }
   },
 
+  listHospitals: async (params = {}) => {
+    try {
+      const { data } = await api.get('/api/admin/hospitals/pending/', { params })
+      return data.results || []
+    } catch (error) {
+      throw new Error(errorMessage(error), { cause: error })
+    }
+  },
+
   verifyHospital: async (userId, action, reason = '') => {
     try {
       const { data } = await api.post(`/api/admin/hospitals/${userId}/verify/`, { action, reason })

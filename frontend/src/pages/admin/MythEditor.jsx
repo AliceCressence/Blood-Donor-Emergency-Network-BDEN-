@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { BookOpen, CheckCircle, Loader2, Plus, Save } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Bold, BookOpen, CheckCircle, Italic, List, ListOrdered, Loader2, Plus, Quote, Save } from 'lucide-react'
 import { mythApi } from '../../services/app.service'
 import { EmptyState, ErrorState } from '../../components/shared/DataStates'
 
@@ -21,6 +21,7 @@ export default function MythEditor() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const editorRef = useRef(null)
 
   useEffect(() => {
     let mounted = true
@@ -33,10 +34,28 @@ export default function MythEditor() {
     return () => { mounted = false; clearTimeout(timer) }
   }, [])
 
+  useEffect(() => {
+    if (form.truth_statement === '' && editorRef.current?.innerHTML) {
+      editorRef.current.innerHTML = ''
+    }
+  }, [form.truth_statement])
+
   const set = (key, value) => {
     setForm(current => ({ ...current, [key]: value }))
     setMessage('')
     setError('')
+  }
+
+  const syncEditor = () => {
+    setForm(current => ({ ...current, truth_statement: editorRef.current?.innerHTML || '' }))
+    setMessage('')
+    setError('')
+  }
+
+  const format = (command, value = null) => {
+    editorRef.current?.focus()
+    document.execCommand(command, false, value)
+    syncEditor()
   }
 
   const save = async () => {
@@ -54,7 +73,11 @@ export default function MythEditor() {
     }
   }
 
-  const insert = text => set('truth_statement', `${form.truth_statement}${form.truth_statement ? '\n\n' : ''}${text}`)
+  const insert = text => {
+    editorRef.current?.focus()
+    document.execCommand('insertHTML', false, `<p><strong>${text}</strong>&nbsp;</p>`)
+    syncEditor()
+  }
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -79,11 +102,28 @@ export default function MythEditor() {
             <textarea className="input min-h-24" placeholder="The myth people believe..." value={form.myth_statement} onChange={e => set('myth_statement', e.target.value)} />
             <div className="rounded-2xl border border-warm-200 dark:border-white/10">
               <div className="flex flex-wrap gap-2 border-b border-warm-100 p-2 dark:border-white/10">
-                <button type="button" onClick={() => insert('Key fact: ')} className="rounded-lg bg-warm-100 px-3 py-1 text-xs font-semibold text-warm-700 hover:bg-warm-200">Key fact</button>
-                <button type="button" onClick={() => insert('What this means for donors: ')} className="rounded-lg bg-warm-100 px-3 py-1 text-xs font-semibold text-warm-700 hover:bg-warm-200">Donor note</button>
-                <button type="button" onClick={() => insert('Safety reminder: ')} className="rounded-lg bg-warm-100 px-3 py-1 text-xs font-semibold text-warm-700 hover:bg-warm-200">Safety</button>
+                {[
+                  ['bold', Bold, 'Bold'],
+                  ['italic', Italic, 'Italic'],
+                  ['insertUnorderedList', List, 'Bullets'],
+                  ['insertOrderedList', ListOrdered, 'Numbered'],
+                  ['formatBlock', Quote, 'Quote', 'blockquote'],
+                ].map(([command, Icon, label]) => (
+                  <button key={command} type="button" onClick={() => format(command, label === 'Quote' ? 'blockquote' : null)} className="rounded-lg bg-warm-100 p-2 text-warm-700 hover:bg-warm-200" title={label}>
+                    <Icon size={14} />
+                  </button>
+                ))}
+                <span className="mx-1 h-8 w-px bg-warm-100" />
+                <button type="button" onClick={() => insert('Key fact:')} className="rounded-lg bg-warm-100 px-3 py-1 text-xs font-semibold text-warm-700 hover:bg-warm-200">Key fact</button>
+                <button type="button" onClick={() => insert('What this means for donors:')} className="rounded-lg bg-warm-100 px-3 py-1 text-xs font-semibold text-warm-700 hover:bg-warm-200">Donor note</button>
+                <button type="button" onClick={() => insert('Safety reminder:')} className="rounded-lg bg-warm-100 px-3 py-1 text-xs font-semibold text-warm-700 hover:bg-warm-200">Safety</button>
               </div>
-              <textarea className="min-h-44 w-full resize-y rounded-b-2xl bg-white px-4 py-3 text-sm text-warm-950 outline-none dark:bg-neutral-900 dark:text-white" placeholder="The friendly, medically accurate answer..." value={form.truth_statement} onChange={e => set('truth_statement', e.target.value)} />
+              <div
+                ref={editorRef}
+                contentEditable
+                className="min-h-44 w-full overflow-y-auto rounded-b-2xl bg-white px-4 py-3 text-sm text-warm-950 outline-none empty:before:text-warm-400 empty:before:content-['The_friendly,_medically_accurate_answer...'] dark:bg-neutral-900 dark:text-white"
+                onInput={syncEditor}
+              />
             </div>
             <input className="input" placeholder="Source, e.g. WHO Blood Safety Guidelines" value={form.source} onChange={e => set('source', e.target.value)} />
             <label className="flex items-center gap-2 text-sm font-semibold text-neutral-600 dark:text-neutral-300">

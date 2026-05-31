@@ -42,6 +42,22 @@ function normalizeRequest(item) {
     postedAgo: formatRelativeTime(item.created_at),
     notes: item.notes || '',
     city: item.city || '',
+    latitude: item.latitude,
+    longitude: item.longitude,
+  }
+}
+
+function requestPayload(payload, user) {
+  return {
+    hospital_id: user?.id,
+    hospital_name: user?.facilityName || user?.name || 'Hospital',
+    city: payload.city || user?.city || '',
+    blood_type: normalizeBlood(payload.bloodType),
+    units_needed: payload.units,
+    urgency: apiUrgency(payload.urgency),
+    notes: payload.notes || '',
+    latitude: payload.latitude ? Number(payload.latitude) : null,
+    longitude: payload.longitude ? Number(payload.longitude) : null,
   }
 }
 
@@ -162,17 +178,15 @@ export const requestApi = {
   },
   async create(payload, user) {
     try {
-      const { data } = await api.post('/api/requests/', {
-        hospital_id: user?.id,
-        hospital_name: user?.facilityName || user?.name || 'Hospital',
-        city: user?.city || payload.city || '',
-        blood_type: normalizeBlood(payload.bloodType),
-        units_needed: payload.units,
-        urgency: apiUrgency(payload.urgency),
-        notes: payload.notes || '',
-        latitude: payload.latitude ? Number(payload.latitude) : null,
-        longitude: payload.longitude ? Number(payload.longitude) : null,
-      })
+      const { data } = await api.post('/api/requests/', requestPayload(payload, user))
+      return normalizeRequest(data)
+    } catch (error) {
+      throw new Error(getApiError(error), { cause: error })
+    }
+  },
+  async edit(id, payload, user) {
+    try {
+      const { data } = await api.patch(`/api/requests/${id}/`, requestPayload(payload, user))
       return normalizeRequest(data)
     } catch (error) {
       throw new Error(getApiError(error), { cause: error })

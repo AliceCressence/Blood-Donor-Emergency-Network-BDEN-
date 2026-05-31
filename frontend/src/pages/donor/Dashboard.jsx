@@ -5,7 +5,7 @@ import {
   CreditCard, Droplets, Heart, MapPin, User, Users,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
-import { donorApi, requestApi } from '../../services/app.service'
+import { campaignApi, donorApi, requestApi } from '../../services/app.service'
 import { CardShimmer, EmptyState, ErrorState, InfoTip } from '../../components/shared/DataStates'
 
 function StatCard({ icon: Icon, label, value, sub, color = 'blood' }) {
@@ -41,6 +41,7 @@ export default function DonorDashboard() {
   const [profile, setProfile] = useState(null)
   const [card, setCard] = useState(null)
   const [requests, setRequests] = useState([])
+  const [campaigns, setCampaigns] = useState([])
   const [donations, setDonations] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -50,16 +51,18 @@ export default function DonorDashboard() {
     setLoading(true)
     setError('')
     try {
-      const [profileData, cardData, donationData, requestData] = await Promise.all([
+      const [profileData, cardData, donationData, requestData, campaignData] = await Promise.all([
         donorApi.getProfile(),
         donorApi.getCard().catch(() => null),
         donorApi.getDonations().catch(() => []),
         requestApi.list({ status: 'ACTIVE', blood_type: userBloodType?.replace('−', '-') || undefined }).catch(() => []),
+        campaignApi.list({ blood_type: userBloodType?.replace('−', '-') || undefined }).catch(() => []),
       ])
       setProfile(profileData)
       setCard(cardData)
       setDonations(donationData)
       setRequests(requestData.slice(0, 4))
+      setCampaigns(campaignData.slice(0, 3))
     } catch (err) {
       setError(err.message)
     } finally {
@@ -156,7 +159,7 @@ export default function DonorDashboard() {
           </div>
           {requests.length === 0 ? (
             <div className="p-5">
-              <EmptyState icon={CheckCircle} title="No active nearby requests" description="When hospitals publish compatible requests, they will appear here with the same priority layout." />
+              <EmptyState icon={CheckCircle} title="No active emergency requests" description="When hospitals publish compatible requests, they will appear here with the same priority layout." />
             </div>
           ) : (
             <div className="divide-y divide-neutral-100">
@@ -180,6 +183,24 @@ export default function DonorDashboard() {
               ))}
             </div>
           )}
+          <div className="border-t border-neutral-100 px-6 py-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="font-display text-sm font-bold text-neutral-900">Donation campaigns</h3>
+              <Link to="/donor/map" className="text-xs font-semibold text-blood-600">View nearby</Link>
+            </div>
+            {campaigns.length === 0 ? (
+              <p className="rounded-xl bg-neutral-50 px-4 py-3 text-xs text-neutral-500">No approved campaigns are open for your blood type right now.</p>
+            ) : (
+              <div className="space-y-2">
+                {campaigns.map(campaign => (
+                  <Link key={campaign.id} to="/donor/map" className="block rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3 transition-colors hover:bg-blue-50">
+                    <p className="text-sm font-semibold text-neutral-900">{campaign.title}</p>
+                    <p className="mt-0.5 text-xs text-neutral-500">{campaign.city || 'Nearby'} · {new Date(campaign.startDate).toLocaleDateString()}</p>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="lg:col-span-2 space-y-6">

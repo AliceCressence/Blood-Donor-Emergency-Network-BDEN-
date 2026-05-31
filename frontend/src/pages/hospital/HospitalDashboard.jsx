@@ -7,7 +7,7 @@ import {
   MapPin, Plus
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
-import { requestApi } from '../../services/app.service'
+import { campaignApi, requestApi } from '../../services/app.service'
 import { CardShimmer, EmptyState } from '../../components/shared/DataStates'
 
 const STATUS_STYLES = {
@@ -39,7 +39,9 @@ function StatCard({ icon: Icon, label, value, sub, color }) {
 export default function HospitalDashboard() {
   const { user } = useAuth()
   const [requests, setRequests] = useState([])
+  const [campaigns, setCampaigns] = useState([])
   const [loadingRequests, setLoadingRequests] = useState(true)
+  const [loadingCampaigns, setLoadingCampaigns] = useState(true)
   const facilityName = user?.facilityName || 'Your facility'
 
   useEffect(() => {
@@ -47,10 +49,15 @@ export default function HospitalDashboard() {
       .then(data => setRequests(data.slice(0, 4)))
       .catch(() => setRequests([]))
       .finally(() => setLoadingRequests(false))
+    campaignApi.mine()
+      .then(data => setCampaigns(data.slice(0, 4)))
+      .catch(() => setCampaigns([]))
+      .finally(() => setLoadingCampaigns(false))
   }, [])
 
   const activeCount = requests.filter(r => r.status === 'active').length
   const criticalCount = requests.filter(r => r.urgency === 'critical').length
+  const runningCampaigns = campaigns.filter(c => ['approved', 'ongoing'].includes(c.status)).length
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">
@@ -80,7 +87,7 @@ export default function HospitalDashboard() {
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard icon={AlertCircle}  label="Active requests"    value={activeCount}    sub={`${criticalCount} critical right now`}     color="blood" />
-        <StatCard icon={CalendarDays} label="Running campaigns"  value="0"    sub="Campaign service is next" color="teal"  />
+        <StatCard icon={CalendarDays} label="Running campaigns"  value={runningCampaigns}    sub={campaigns.length ? 'Approved or happening now' : 'Create your first drive'} color="teal"  />
         <StatCard icon={Users}        label="Donors in radius"   value="0"    sub="Appears after matching runs" color="blue"  />
         <StatCard icon={TrendingUp}   label="Donations received" value="0"    sub="Verified records will appear here" color="amber" />
       </div>
@@ -146,9 +153,23 @@ export default function HospitalDashboard() {
             </Link>
           </div>
           <div className="divide-y divide-warm-100">
-            <div className="p-5">
-              <EmptyState icon={CalendarDays} title="No campaigns yet" description="When campaign management is connected, your active drives will appear here." />
-            </div>
+            {loadingCampaigns && [0, 1].map(i => <div key={i} className="p-4"><CardShimmer rows={1} /></div>)}
+            {!loadingCampaigns && campaigns.length === 0 && (
+              <div className="p-5">
+                <EmptyState icon={CalendarDays} title="No campaigns yet" description="Create a donation drive and it will appear here once submitted." />
+              </div>
+            )}
+            {!loadingCampaigns && campaigns.map(campaign => (
+              <Link key={campaign.id} to="/hospital/campaigns" className="block px-6 py-4 transition-colors hover:bg-warm-50">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-warm-900">{campaign.title}</p>
+                    <p className="mt-0.5 text-xs text-warm-500">{campaign.city || 'Location not set'} · {new Date(campaign.startDate).toLocaleDateString()}</p>
+                  </div>
+                  <span className="shrink-0 rounded-full border border-teal-200 bg-teal-50 px-2.5 py-1 text-[10px] font-bold text-teal-700">{campaign.rawStatus}</span>
+                </div>
+              </Link>
+            ))}
           </div>
           <div className="px-6 pb-5">
             <Link to="/hospital/campaigns"

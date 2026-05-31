@@ -37,6 +37,7 @@ import HospitalProfile   from '../pages/hospital/HospitalProfile'
 
 // Admin pages
 import AdminDashboard       from '../pages/admin/AdminDashboard'
+import AdminProfile         from '../pages/admin/AdminProfile'
 import FacilityVerification from '../pages/admin/FacilityVerification'
 import CampaignReview       from '../pages/admin/CampaignReview'
 import ContentModeration    from '../pages/admin/ContentModeration'
@@ -90,6 +91,7 @@ export default function AppRouter() {
           <Route element={<AdminLayout />}>
             <Route path="/admin"              element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="/admin/dashboard"    element={<AdminDashboard />} />
+            <Route path="/admin/profile"      element={<AdminProfile />} />
             <Route path="/admin/verification" element={<FacilityVerification />} />
             <Route path="/admin/campaigns"    element={<CampaignReview />} />
             <Route path="/admin/myths"        element={<MythEditor />} />

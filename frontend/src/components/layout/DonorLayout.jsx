@@ -7,6 +7,7 @@ import {
   MapPin,
   Bell,
   LogOut,
+  Menu,
   ChevronLeft,
   ChevronRight,
   User,
@@ -76,6 +77,7 @@ function SignOutModal({ onConfirm, onCancel }) {
 // ─── Main layout ──────────────────────────────────────────────────────────────
 export default function DonorLayout() {
   const [collapsed, setCollapsed]       = useState(false)
+  const [sidebarOpen, setSidebarOpen]   = useState(false)
   const [dropUpOpen, setDropUpOpen]     = useState(false)
   const [showSignOutModal, setShowSignOutModal] = useState(false)
   const dropUpRef                       = useRef(null)
@@ -122,9 +124,9 @@ export default function DonorLayout() {
         {/* ── Sidebar ────────────────────────────────────────────────────── */}
         <div
           className={`
-            fixed left-4 top-4 bottom-4 bg-white/90 border border-white/70 shadow-2xl
+            fixed left-4 top-4 bottom-4 hidden bg-white/90 border border-white/70 shadow-2xl
             backdrop-blur-xl transition-[width,transform,border-radius,box-shadow] duration-500
-            ease-[cubic-bezier(0.22,1,0.36,1)] z-[1200] flex flex-col rounded-[28px]
+            ease-[cubic-bezier(0.22,1,0.36,1)] z-[1200] lg:flex flex-col rounded-[28px]
             ${collapsed
               ? 'w-[76px]'
               : 'w-[264px]'
@@ -257,14 +259,64 @@ export default function DonorLayout() {
           </div>
         </div>
 
+        {sidebarOpen && (
+          <div className="fixed inset-0 z-[1300] flex bg-black/60 p-3 backdrop-blur-sm lg:hidden">
+            <div className="flex h-full w-full flex-col overflow-y-auto rounded-[28px] border border-white/70 bg-white/95 shadow-2xl">
+              <div className="flex items-center justify-between border-b border-warm-100/80 px-4 py-4">
+                <Link to="/donor/dashboard" onClick={() => setSidebarOpen(false)} className="flex items-center gap-2">
+                  <img src="/favicon.svg" alt="BDEN" className="h-10 w-10 rounded-2xl shadow-sm" />
+                  <div>
+                    <span className="block font-display text-lg font-bold leading-tight text-blood-600">BDEN</span>
+                    <span className="block text-[10px] uppercase tracking-wide text-warm-400">Donor portal</span>
+                  </div>
+                </Link>
+                <button onClick={() => setSidebarOpen(false)} className="rounded-lg p-1.5 text-warm-500 hover:bg-warm-100"><X size={18} /></button>
+              </div>
+              <nav className="flex-1 space-y-2 overflow-y-auto px-4 py-5">
+                {navItems.map(item => (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={() => setSidebarOpen(false)}
+                    className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition-colors ${
+                      isActive(item.path) ? 'bg-blood-600 text-white shadow-lg shadow-blood-600/20' : 'text-warm-700 hover:bg-blood-50 hover:text-blood-600'
+                    }`}
+                  >
+                    <item.icon size={20} />
+                    {item.label}
+                  </Link>
+                ))}
+              </nav>
+              <div className="border-t border-warm-100/80 p-4">
+                <Link to="/donor/profile" onClick={() => setSidebarOpen(false)} className="mb-2 flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-warm-700 hover:bg-blood-50 hover:text-blood-600">
+                  <User size={18} /> View profile
+                </Link>
+                <button onClick={() => { setSidebarOpen(false); setShowSignOutModal(true) }} className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-warm-600 hover:bg-red-50 hover:text-red-600">
+                  <LogOut size={18} /> Sign out
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ── Main content ───────────────────────────────────────────────── */}
         <main
           className={`min-h-screen overflow-auto transition-[padding] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
-            isMapView ? '' : collapsed ? 'pl-[108px]' : 'pl-[296px]'
+            isMapView ? '' : collapsed ? 'lg:pl-[108px]' : 'lg:pl-[296px]'
           }`}
         >
+          {isMapView && (
+            <button onClick={() => setSidebarOpen(true)} className="fixed left-4 top-4 z-[1250] rounded-2xl border border-white/70 bg-white/90 p-3 text-warm-700 shadow-xl backdrop-blur-xl lg:hidden">
+              <Menu size={20} />
+            </button>
+          )}
           <div className={isMapView ? 'h-full' : 'p-6 h-full'}>
-            {!isMapView && <div className="mb-4 flex justify-end"><ThemeToggle /></div>}
+            {!isMapView && (
+              <div className="mb-4 flex items-center justify-between lg:justify-end">
+                <button onClick={() => setSidebarOpen(true)} className="rounded-xl border border-warm-200 bg-white p-2 text-warm-600 shadow-sm lg:hidden"><Menu size={20} /></button>
+                <ThemeToggle />
+              </div>
+            )}
             <Outlet context={{ collapsed }} />
           </div>
         </main>

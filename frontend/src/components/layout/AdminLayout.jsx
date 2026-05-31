@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   Activity, BookOpen, CalendarDays, ChevronLeft, ChevronRight, Flag, LayoutDashboard,
   LogOut, Menu, Shield, ShieldCheck, User, X,
@@ -58,9 +58,9 @@ function Sidebar({ collapsed, setCollapsed, mobile = false, onClose, user, onAsk
       )}
 
       <div className={`border-b border-warm-100/80 px-3 py-4 dark:border-white/10 ${collapsed && !mobile ? 'text-center' : ''}`}>
-        <div className={`flex items-center gap-3 rounded-2xl bg-warm-50 p-3 dark:bg-white/5 ${collapsed && !mobile ? 'justify-center' : ''}`}>
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-blood-400/30 bg-blood-600/20">
-            <Shield size={15} className="text-blood-300" />
+        <div className={`flex items-center gap-3 rounded-2xl bg-blood-50 p-3 dark:bg-white/5 ${collapsed && !mobile ? 'justify-center' : ''}`}>
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-blood-200 bg-white dark:border-blood-400/30 dark:bg-blood-600/20">
+            <Shield size={15} className="text-blood-600 dark:text-blood-300" />
           </div>
           {(!collapsed || mobile) && (
             <div className="min-w-0">
@@ -93,9 +93,9 @@ function Sidebar({ collapsed, setCollapsed, mobile = false, onClose, user, onAsk
               <p className="truncate text-sm font-semibold text-warm-900 dark:text-white">{user?.name || 'BDEN admin'}</p>
               <p className="truncate text-xs text-warm-500">{user?.email || 'Platform account'}</p>
             </div>
-            <div className="flex items-center gap-3 px-4 py-3 text-sm text-warm-700 dark:text-warm-300">
+            <Link to="/admin/profile" onClick={() => { setDropUpOpen(false); onClose?.() }} className="flex items-center gap-3 px-4 py-3 text-sm text-warm-700 transition-colors hover:bg-blood-50 hover:text-blood-600 dark:text-warm-300 dark:hover:bg-white/10">
               <User size={16} /> <span className="font-medium">Platform administrator</span>
-            </div>
+            </Link>
             <button onClick={() => { setDropUpOpen(false); onAskLogout() }} className="flex w-full items-center gap-3 px-4 py-3 text-sm text-warm-600 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-warm-300 dark:hover:bg-red-950/40">
               <LogOut size={16} /> <span className="font-medium">Sign out</span>
             </button>
@@ -140,9 +140,8 @@ export default function AdminLayout() {
       </div>
 
       {sidebarOpen && (
-        <div className="fixed inset-0 z-[900] flex lg:hidden">
-          <div className="w-[280px] p-4"><Sidebar mobile user={user} onClose={() => setSidebarOpen(false)} onAskLogout={() => setShowLogout(true)} /></div>
-          <button className="flex-1 bg-black/70" onClick={() => setSidebarOpen(false)} aria-label="Close sidebar" />
+        <div className="fixed inset-0 z-[900] flex bg-black/70 p-3 backdrop-blur-sm lg:hidden">
+          <div className="h-full w-full overflow-y-auto rounded-[28px]"><Sidebar mobile user={user} onClose={() => setSidebarOpen(false)} onAskLogout={() => setShowLogout(true)} /></div>
         </div>
       )}
 

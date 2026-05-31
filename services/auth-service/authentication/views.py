@@ -334,15 +334,16 @@ class PendingHospitalsView(APIView):
     permission_classes = [IsAuthenticated, IsAdmin]
 
     @swagger_auto_schema(
-        operation_summary="List pending hospitals",
-        operation_description="Admin-only endpoint returning hospital registrations with PENDING verification status.",
+        operation_summary="List hospital registrations",
+        operation_description="Admin-only endpoint returning hospital registrations. Use status=PENDING, APPROVED, REJECTED, or ALL.",
         responses={200: HospitalRegistrationDetailSerializer(many=True)},
         tags=["Admin Verification"],
     )
-    def get(self, _request):
-        registrations = HospitalRegistration.objects.filter(
-            verification_status=HospitalRegistration.VerificationStatus.PENDING
-        ).select_related("user").order_by("submitted_at")
+    def get(self, request):
+        status_filter = request.query_params.get("status", HospitalRegistration.VerificationStatus.PENDING).upper()
+        registrations = HospitalRegistration.objects.select_related("user").order_by("-submitted_at")
+        if status_filter != "ALL":
+            registrations = registrations.filter(verification_status=status_filter)
         return Response({"results": HospitalRegistrationDetailSerializer(registrations, many=True).data})
 
 

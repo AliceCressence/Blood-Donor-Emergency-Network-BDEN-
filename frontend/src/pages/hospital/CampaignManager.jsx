@@ -135,14 +135,16 @@ function CampaignDetail({ campaign, progress, setProgress, savingProgress, onPro
           </div>
         )}
 
-        {(campaign.status === 'pending' || campaign.status === 'rejected') && (
+        {campaign.status !== 'cancelled' && campaign.status !== 'completed' && (
           <div className="flex flex-wrap gap-2">
             <button onClick={onEdit} className="rounded-xl border border-blue-200 px-4 py-2.5 text-sm font-semibold text-blue-600 transition-colors hover:bg-blue-50">
               <Edit3 size={14} className="mr-1 inline" /> Edit campaign
             </button>
+            {(campaign.status === 'pending' || campaign.status === 'rejected') && (
             <button onClick={onCancelAsk} className="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50">
               Cancel submission
             </button>
+            )}
           </div>
         )}
       </div>
@@ -337,6 +339,9 @@ export default function CampaignManager() {
               <input className="input" placeholder="Venue / address" value={form.address} onChange={e => set('address', e.target.value)} />
               <input className="input" placeholder="Latitude" value={form.latitude} onChange={e => set('latitude', e.target.value)} />
               <input className="input" placeholder="Longitude" value={form.longitude} onChange={e => set('longitude', e.target.value)} />
+              <a className="text-xs font-semibold text-blue-600 hover:text-blue-700 sm:col-span-2" href="https://www.google.com/maps" target="_blank" rel="noreferrer">
+                Open Google Maps to copy coordinates
+              </a>
               <button type="button" onClick={useCurrentLocation} className="btn-secondary sm:col-span-2"><LocateFixed size={15} /> Use current location</button>
             </fieldset>
 

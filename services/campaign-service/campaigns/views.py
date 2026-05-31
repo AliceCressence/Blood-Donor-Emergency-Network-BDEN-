@@ -131,8 +131,8 @@ class CampaignEditView(APIView):
     @swagger_auto_schema(operation_summary="Edit own pending/rejected campaign", request_body=UpdateCampaignSerializer, responses={200: DonationCampaignSerializer}, tags=["Hospital Campaigns"])
     def patch(self, request, pk):
         campaign = get_object_or_404(DonationCampaign, pk=pk, hospital_user_id=request.user.id)
-        if campaign.status not in [DonationCampaign.CampaignStatus.PENDING, DonationCampaign.CampaignStatus.REJECTED]:
-            return Response({"detail": "Only campaigns still in review or sent back for edits can be changed."}, status=status.HTTP_400_BAD_REQUEST)
+        if campaign.status in [DonationCampaign.CampaignStatus.CANCELLED, DonationCampaign.CampaignStatus.COMPLETED]:
+            return Response({"detail": "Completed or cancelled campaigns can no longer be changed."}, status=status.HTTP_400_BAD_REQUEST)
         serializer = UpdateCampaignSerializer(campaign, data=request.data, partial=True, context={"hospital_user_id": request.user.id})
         serializer.is_valid(raise_exception=True)
         for field, value in serializer.validated_data.items():
