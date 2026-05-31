@@ -343,6 +343,11 @@ code, pre, kbd, .mono {
   100% { transform: scale(.98); opacity: 0; }
 }
 
+@keyframes slideInRight {
+  0% { transform: translateX(24px); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
 .blood-splash {
   position: absolute;
   width: min(70vw, 520px);
