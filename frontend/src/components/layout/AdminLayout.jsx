@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
-  Activity, ChevronLeft, ChevronRight, Flag, LayoutDashboard,
+  Activity, BookOpen, CalendarDays, ChevronLeft, ChevronRight, Flag, LayoutDashboard,
   LogOut, Menu, Shield, ShieldCheck, User, X,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
@@ -11,6 +11,8 @@ import ThemeToggle from '../shared/ThemeToggle'
 const navItems = [
   { to: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/admin/verification', icon: ShieldCheck, label: 'Facility Verification' },
+  { to: '/admin/campaigns', icon: CalendarDays, label: 'Campaign Review' },
+  { to: '/admin/myths', icon: BookOpen, label: 'Myth Guides' },
   { to: '/admin/moderation', icon: Flag, label: 'Content Moderation' },
   { to: '/admin/health', icon: Activity, label: 'Platform Health' },
 ]

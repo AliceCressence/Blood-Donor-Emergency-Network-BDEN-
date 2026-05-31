@@ -26,7 +26,7 @@ const navItems = [
 // ─── Sign-out confirmation modal ─────────────────────────────────────────────
 function SignOutModal({ onConfirm, onCancel }) {
   return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center">
+    <div className="fixed inset-0 z-[1400] flex items-center justify-center">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/30 backdrop-blur-sm"
@@ -124,7 +124,7 @@ export default function DonorLayout() {
           className={`
             fixed left-4 top-4 bottom-4 bg-white/90 border border-white/70 shadow-2xl
             backdrop-blur-xl transition-[width,transform,border-radius,box-shadow] duration-500
-            ease-[cubic-bezier(0.22,1,0.36,1)] z-[600] flex flex-col rounded-[28px]
+            ease-[cubic-bezier(0.22,1,0.36,1)] z-[1200] flex flex-col rounded-[28px]
             ${collapsed
               ? 'w-[76px]'
               : 'w-[264px]'

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { AlertCircle, CheckCircle, Clock, Droplets, Info, Plus, Users, X, XCircle } from 'lucide-react'
+import { AlertCircle, CheckCircle, Clock, Droplets, Info, LocateFixed, MapPin, Plus, Search, Users, X, XCircle } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { requestApi } from '../../services/app.service'
 import { CardShimmer, ConfirmModal, EmptyState, ErrorState, InfoTip } from '../../components/shared/DataStates'
@@ -33,7 +33,8 @@ export default function EmergencyRequest() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [closeTarget, setCloseTarget] = useState(null)
-  const [form, setForm] = useState({ bloodType: '', urgency: '', units: 1, notes: '' })
+  const [form, setForm] = useState({ bloodType: '', urgency: '', units: 1, city: user?.city || '', latitude: '', longitude: '', notes: '' })
+  const [locationMessage, setLocationMessage] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -61,7 +62,7 @@ export default function EmergencyRequest() {
     try {
       const created = await requestApi.create(form, user)
       setRequests(prev => [created, ...prev])
-      setForm({ bloodType: '', urgency: '', units: 1, notes: '' })
+      setForm({ bloodType: '', urgency: '', units: 1, city: user?.city || '', latitude: '', longitude: '', notes: '' })
       setShowForm(false)
       setSubmitted(true)
       setTimeout(() => setSubmitted(false), 4000)
@@ -81,6 +82,23 @@ export default function EmergencyRequest() {
     } catch (err) {
       setError(err.message)
     }
+  }
+
+  const useCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationMessage('This browser cannot share location. You can still type the city and coordinates.')
+      return
+    }
+    setLocationMessage('Finding your facility location...')
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        update('latitude', position.coords.latitude.toFixed(6))
+        update('longitude', position.coords.longitude.toFixed(6))
+        setLocationMessage('Location added. Please keep the city name readable for donors.')
+      },
+      () => setLocationMessage('We could not read your location. You can enter the city and coordinates manually.'),
+      { enableHighAccuracy: true, timeout: 10000 },
+    )
   }
 
   const filtered = filter === 'all' ? requests : requests.filter(r => r.status === filter)
@@ -125,6 +143,28 @@ export default function EmergencyRequest() {
                 {URGENCY_LEVELS.map(u => <button key={u.value} onClick={() => update('urgency', u.value)} className={`p-4 rounded-xl border-2 text-left transition-all duration-150 ${form.urgency === u.value ? 'border-blood-500 bg-blood-50' : 'border-warm-200 bg-white hover:border-warm-300'}`}><p className="font-semibold text-sm mb-1 text-warm-800">{u.label}</p><p className="text-xs text-warm-500 leading-relaxed">{u.desc}</p></button>)}
               </div>
             </div>
+            <fieldset className="rounded-2xl border border-warm-200 bg-warm-50/60 p-4">
+              <legend className="px-2 text-xs font-bold uppercase tracking-wide text-warm-500">Where donors should go</legend>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block">
+                  <span className="label flex items-center gap-2"><Search size={13} /> City</span>
+                  <input value={form.city} onChange={e => update('city', e.target.value)} placeholder="e.g. Yaounde" className="input bg-white" />
+                </label>
+                <div>
+                  <span className="label flex items-center gap-2"><MapPin size={13} /> Coordinates</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input value={form.latitude} onChange={e => update('latitude', e.target.value)} placeholder="Latitude" className="input bg-white" />
+                    <input value={form.longitude} onChange={e => update('longitude', e.target.value)} placeholder="Longitude" className="input bg-white" />
+                  </div>
+                </div>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <button type="button" onClick={useCurrentLocation} className="inline-flex items-center gap-2 rounded-xl border border-blood-200 bg-white px-4 py-2 text-sm font-semibold text-blood-700 transition-colors hover:bg-blood-50">
+                  <LocateFixed size={15} /> Use current location
+                </button>
+                {locationMessage && <p className="text-xs text-warm-500">{locationMessage}</p>}
+              </div>
+            </fieldset>
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
                 <label className="label">Units needed</label>

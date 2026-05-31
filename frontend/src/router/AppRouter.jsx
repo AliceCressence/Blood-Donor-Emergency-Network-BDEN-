@@ -9,6 +9,8 @@ import AdminLayout    from '../components/layout/AdminLayout'
 
 // Public
 import LandingPage  from '../pages/public/LandingPage'
+import CampaignsPage from '../pages/public/CampaignsPage'
+import MythsPage from '../pages/public/MythsPage'
 import NotFoundPage from '../pages/public/NotFoundPage'
 
 // Auth
@@ -36,7 +38,9 @@ import HospitalProfile   from '../pages/hospital/HospitalProfile'
 // Admin pages
 import AdminDashboard       from '../pages/admin/AdminDashboard'
 import FacilityVerification from '../pages/admin/FacilityVerification'
+import CampaignReview       from '../pages/admin/CampaignReview'
 import ContentModeration    from '../pages/admin/ContentModeration'
+import MythEditor           from '../pages/admin/MythEditor'
 import PlatformHealth       from '../pages/admin/PlatformHealth'
 
 export default function AppRouter() {
@@ -47,6 +51,8 @@ export default function AppRouter() {
         {/* Public */}
         <Route element={<PublicLayout />}>
           <Route index element={<LandingPage />} />
+          <Route path="/campaigns" element={<CampaignsPage />} />
+          <Route path="/myths" element={<MythsPage />} />
         </Route>
 
         {/* Auth */}
@@ -85,6 +91,8 @@ export default function AppRouter() {
             <Route path="/admin"              element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="/admin/dashboard"    element={<AdminDashboard />} />
             <Route path="/admin/verification" element={<FacilityVerification />} />
+            <Route path="/admin/campaigns"    element={<CampaignReview />} />
+            <Route path="/admin/myths"        element={<MythEditor />} />
             <Route path="/admin/moderation"   element={<ContentModeration />} />
             <Route path="/admin/health"       element={<PlatformHealth />} />
           </Route>

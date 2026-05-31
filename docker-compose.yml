@@ -229,12 +229,18 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.dev
       DEBUG: ${DEBUG:-True}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,campaign-service}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-change-me-auth}
       CAMPAIGN_SECRET_KEY: ${CAMPAIGN_SECRET_KEY:-change-me-campaign}
       CAMPAIGN_DB_NAME: ${CAMPAIGN_DB_NAME:-bden_campaign}
       CAMPAIGN_DB_USER: ${CAMPAIGN_DB_USER:-bden_user}
       CAMPAIGN_DB_PASSWORD: ${CAMPAIGN_DB_PASSWORD:-bden_password}
       CAMPAIGN_DB_HOST: ${CAMPAIGN_DB_HOST:-campaign-db}
       CAMPAIGN_DB_PORT: ${CAMPAIGN_DB_PORT:-5432}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-api-key}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      DONOR_SERVICE_INTERNAL_URL: ${DONOR_SERVICE_INTERNAL_URL:-http://donor-service:8002}
     command: >
       sh -c "python manage.py migrate &&
              python manage.py collectstatic --no-input &&
@@ -243,6 +249,7 @@ services:
       - "${PORT_PREFIX:-}8004:8004"
     depends_on:
       - campaign-db
+      - redis
     networks:
       - bden_network
 

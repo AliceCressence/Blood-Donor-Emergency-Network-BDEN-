@@ -54,6 +54,7 @@ curl http://localhost:8000/health/auth/
 curl http://localhost:8000/api/docs/swagger/
 curl http://localhost:8000/api/donor/docs/
 curl http://localhost:8003/swagger/
+curl http://localhost:8004/api/docs/
 curl http://localhost:8005/swagger/
 ```
 
@@ -65,6 +66,7 @@ The auth and donor service containers run migrations on startup. To run them man
 docker compose run --rm auth-service python manage.py migrate
 docker compose run --rm donor-service python manage.py migrate
 docker compose run --rm request-service python manage.py migrate
+docker compose run --rm campaign-service python manage.py migrate
 docker compose run --rm notification-service python manage.py migrate
 ```
 
@@ -72,6 +74,7 @@ Seed donor screening centers:
 
 ```bash
 docker compose run --rm donor-service python manage.py seed_screening_centers
+docker compose run --rm campaign-service python manage.py seed_myths
 ```
 
 Create an admin user:
@@ -86,8 +89,24 @@ Request and notification service admins are available directly at:
 
 ```text
 http://localhost:8003/django-admin/
+http://localhost:8004/django-admin/
 http://localhost:8005/django-admin/
 ```
+
+## Campaign Service
+
+Campaign-service owns donation campaigns and myth-debunking articles. Hospitals submit campaigns as `PENDING`, admins approve or reject them, and approved campaigns become publicly discoverable.
+
+Useful routes:
+
+```text
+http://localhost:8004/api/docs/
+http://localhost:8004/api/campaigns/
+http://localhost:8004/api/myths/
+http://localhost:8000/api/campaign/docs/
+```
+
+Campaign approval publishes Redis events such as `CAMPAIGN_APPROVED`; notification-service can consume those later for donor and hospital notifications.
 
 ## Request And Notification Events
 
@@ -120,6 +139,7 @@ WhiteNoise is configured directly in each Django service. The old root `apply_wh
 docker compose run --rm auth-service pytest
 docker compose run --rm donor-service pytest
 docker compose run --rm request-service pytest
+docker compose run --rm campaign-service pytest
 docker compose run --rm notification-service pytest
 ```
 

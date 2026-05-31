@@ -13,10 +13,10 @@ const stats = (pendingCount) => [
 ]
 
 const colorMap = {
-  violet: 'bg-violet-900/40 text-violet-400 border-violet-700/40',
-  blue: 'bg-blue-900/40 text-blue-400 border-blue-700/40',
-  green: 'bg-emerald-900/40 text-emerald-400 border-emerald-700/40',
-  red: 'bg-red-900/40 text-red-400 border-red-700/40',
+  violet: 'bg-violet-50 text-violet-600 border-violet-100 dark:bg-violet-900/40 dark:text-violet-400 dark:border-violet-700/40',
+  blue: 'bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-900/40 dark:text-blue-400 dark:border-blue-700/40',
+  green: 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/40 dark:text-emerald-400 dark:border-emerald-700/40',
+  red: 'bg-red-50 text-red-600 border-red-100 dark:bg-red-900/40 dark:text-red-400 dark:border-red-700/40',
 }
 
 export default function AdminDashboard() {
@@ -48,8 +48,8 @@ export default function AdminDashboard() {
           <h1 className="font-display text-2xl font-bold text-warm-950 dark:text-white">Admin Dashboard</h1>
           <p className="text-neutral-500 text-sm mt-1">BDEN platform overview</p>
         </div>
-        <span className="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-900/30 border border-emerald-700/30 px-3 py-1.5 rounded-full">
-          <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+        <span className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full dark:text-emerald-400 dark:bg-emerald-900/30 dark:border-emerald-700/30">
+          <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse dark:bg-emerald-400" />
           Admin workspace
         </span>
       </div>

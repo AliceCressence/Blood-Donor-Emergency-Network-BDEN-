@@ -7,6 +7,7 @@ import {
   TrendingUp, Zap, BookOpen, Phone, Mail, Globe,
   Activity, Award, XCircle
 } from 'lucide-react'
+import { campaignApi, mythApi } from '../../services/app.service'
 
 // ─── DATA ────────────────────────────────────────────────────────
 
@@ -39,57 +40,6 @@ const HOW_IT_WORKS = [
       { icon: Activity,     title: 'Organize campaigns',        desc: 'Plan donation drives with target blood types, collection goals, and donor incentives.' },
       { icon: TrendingUp,   title: 'Track in real time',        desc: 'Monitor request status, campaign progress, and your donor community from one dashboard.' },
     ],
-  },
-]
-
-const MYTHS = [
-  {
-    myth:  'Donating blood makes you weak and sick',
-    truth: 'Your body replaces donated plasma within 24 hours. Most donors feel completely normal immediately after donation.',
-    source: 'WHO Guidelines',
-  },
-  {
-    myth:  'You need to know your blood type to register',
-    truth: "BDEN accepts donors at every stage. You can register without a known blood type and we'll guide you to get tested.",
-    source: 'BDEN Platform',
-  },
-  {
-    myth:  'Blood donation is painful and time-consuming',
-    truth: 'The process takes about 30–45 minutes total. The actual blood draw is only 8–10 minutes with minimal discomfort.',
-    source: 'WHO Guidelines',
-  },
-]
-
-const CAMPAIGNS = [
-  {
-    hospital:  'Centre Hospitalier Universitaire de Yaoundé',
-    location:  'Yaoundé, Centre',
-    types:     ['O+', 'O-', 'A+'],
-    target:    120,
-    current:   74,
-    date:      'May 20, 2026',
-    benefit:   'Free malaria screening for all donors',
-    urgent:    false,
-  },
-  {
-    hospital:  'Hôpital Central de Yaoundé',
-    location:  'Yaoundé, Centre',
-    types:     ['B+', 'AB+'],
-    target:    60,
-    current:   18,
-    date:      'May 15, 2026',
-    benefit:   'Priority consultation access (3 months)',
-    urgent:    true,
-  },
-  {
-    hospital:  'Fondation Chantal Biya',
-    location:  'Yaoundé, Centre',
-    types:     ['A-', 'B-', 'AB-'],
-    target:    80,
-    current:   55,
-    date:      'May 25, 2026',
-    benefit:   'BDEN loyalty card + free blood typing',
-    urgent:    false,
   },
 ]
 
@@ -156,7 +106,7 @@ function BloodPill({ type }) {
 // ─── CAMPAIGN CARD ───────────────────────────────────────────────
 
 function CampaignCard({ campaign, delay }) {
-  const pct = Math.round((campaign.current / campaign.target) * 100)
+  const pct = campaign.target ? Math.round((campaign.current / campaign.target) * 100) : 0
   return (
     <div
       className="bg-white rounded-2xl border border-warm-200 shadow-card p-6
@@ -188,7 +138,7 @@ function CampaignCard({ campaign, delay }) {
       <div className="mb-3">
         <div className="flex justify-between text-xs text-warm-500 mb-1.5">
           <span>{campaign.current} donors</span>
-          <span>Goal: {campaign.target}</span>
+          <span>Goal: {campaign.target || 'open'}</span>
         </div>
         <div className="h-1.5 bg-warm-100 rounded-full overflow-hidden">
           <div
@@ -211,8 +161,32 @@ function CampaignCard({ campaign, delay }) {
 
 export default function LandingPage() {
   const [activeRole, setActiveRole] = useState(0)
+  const [campaigns, setCampaigns] = useState([])
+  const [myths, setMyths] = useState([])
   const [statsRef, statsInView] = useInView(0.3)
   const [howRef,   howInView]   = useInView(0.2)
+
+  useEffect(() => {
+    campaignApi.list().then(data => {
+      setCampaigns(data.slice(0, 3).map(item => ({
+        hospital: item.hospitalName,
+        location: [item.city, item.address].filter(Boolean).join(', ') || 'Cameroon',
+        types: item.bloodTypes.length ? item.bloodTypes : ['All'],
+        target: item.targetDonors,
+        current: item.actualDonors,
+        date: item.startDate ? new Date(item.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Soon',
+        benefit: item.incentives || 'Warm welcome from the hospital team',
+        urgent: item.bloodTypes.includes('O−'),
+      })))
+    }).catch(() => setCampaigns([]))
+    mythApi.list().then(data => {
+      setMyths(data.slice(0, 3).map(item => ({
+        myth: item.myth_statement,
+        truth: item.truth_statement,
+        source: item.source || 'BDEN medical review',
+      })))
+    }).catch(() => setMyths([]))
+  }, [])
 
   return (
     <div className="overflow-x-hidden">
@@ -471,11 +445,17 @@ export default function LandingPage() {
             </Link>
           </div>
 
+          {campaigns.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-warm-200 bg-warm-50 p-8 text-center text-warm-500">
+              Approved campaigns will appear here as hospitals publish them.
+            </div>
+          ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {CAMPAIGNS.map((c, i) => (
+            {campaigns.map((c, i) => (
               <CampaignCard key={c.hospital} campaign={c} delay={i * 100} />
             ))}
           </div>
+          )}
 
           <div className="md:hidden text-center mt-8">
             <Link to="/campaigns" className="text-sm font-semibold text-blood-600">
@@ -508,8 +488,13 @@ export default function LandingPage() {
             </p>
           </div>
 
+          {myths.length === 0 ? (
+            <div className="mb-12 rounded-2xl border border-warm-800 bg-warm-900/50 p-8 text-center text-warm-500">
+              Myth-busting articles will appear here once the team publishes them.
+            </div>
+          ) : (
           <div className="grid md:grid-cols-3 gap-6 mb-12">
-            {MYTHS.map((m, i) => (
+            {myths.map((m, i) => (
               <div key={i}
                    className="rounded-2xl border border-warm-800 bg-warm-900/50 backdrop-blur-sm p-6
                               hover:border-warm-600 transition-colors duration-300">
@@ -541,6 +526,7 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
+          )}
 
           <div className="text-center">
             <Link to="/myths"
