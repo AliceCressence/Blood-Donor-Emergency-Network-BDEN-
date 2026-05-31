@@ -1,6 +1,6 @@
 // src/context/AuthContext.jsx
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useCallback, useContext, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { authService } from '../services/auth.service'
 
 const AuthContext = createContext(null)
@@ -16,6 +16,12 @@ export function AuthProvider({ children }) {
     }
   })
   const [isLoading] = useState(false)
+
+  useEffect(() => {
+    const handleExpiredSession = () => setUser(null)
+    window.addEventListener('bden:session-expired', handleExpiredSession)
+    return () => window.removeEventListener('bden:session-expired', handleExpiredSession)
+  }, [])
 
   const login = async (email, password) => {
     const data = await authService.login(email, password)

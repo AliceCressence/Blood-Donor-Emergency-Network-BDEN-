@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { AlertCircle, CheckCircle, Clock, Droplets, Info, Plus, Users, X, XCircle } from 'lucide-react'
+import { AlertCircle, CheckCircle, Clock, Droplets, Edit3, Info, LocateFixed, MapPin, Plus, Search, Users, X, XCircle } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { requestApi } from '../../services/app.service'
 import { CardShimmer, ConfirmModal, EmptyState, ErrorState, InfoTip } from '../../components/shared/DataStates'
@@ -33,7 +33,9 @@ export default function EmergencyRequest() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [closeTarget, setCloseTarget] = useState(null)
-  const [form, setForm] = useState({ bloodType: '', urgency: '', units: 1, notes: '' })
+  const [editingId, setEditingId] = useState(null)
+  const [form, setForm] = useState({ bloodType: '', urgency: '', units: 1, city: user?.city || '', latitude: '', longitude: '', notes: '' })
+  const [locationMessage, setLocationMessage] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -59,9 +61,10 @@ export default function EmergencyRequest() {
     setSaving(true)
     setError('')
     try {
-      const created = await requestApi.create(form, user)
-      setRequests(prev => [created, ...prev])
-      setForm({ bloodType: '', urgency: '', units: 1, notes: '' })
+      const saved = editingId ? await requestApi.edit(editingId, form, user) : await requestApi.create(form, user)
+      setRequests(prev => editingId ? prev.map(item => item.id === saved.id ? saved : item) : [saved, ...prev])
+      setForm({ bloodType: '', urgency: '', units: 1, city: user?.city || '', latitude: '', longitude: '', notes: '' })
+      setEditingId(null)
       setShowForm(false)
       setSubmitted(true)
       setTimeout(() => setSubmitted(false), 4000)
@@ -83,6 +86,37 @@ export default function EmergencyRequest() {
     }
   }
 
+  const startEdit = request => {
+    setEditingId(request.id)
+    setForm({
+      bloodType: request.bloodType || '',
+      urgency: request.urgency || '',
+      units: request.units || 1,
+      city: request.city || user?.city || '',
+      latitude: request.latitude || '',
+      longitude: request.longitude || '',
+      notes: request.notes || '',
+    })
+    setShowForm(true)
+  }
+
+  const useCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationMessage('This browser cannot share location. You can still type the city and coordinates.')
+      return
+    }
+    setLocationMessage('Finding your facility location...')
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        update('latitude', position.coords.latitude.toFixed(6))
+        update('longitude', position.coords.longitude.toFixed(6))
+        setLocationMessage('Location added. Please keep the city name readable for donors.')
+      },
+      () => setLocationMessage('We could not read your location. You can enter the city and coordinates manually.'),
+      { enableHighAccuracy: true, timeout: 10000 },
+    )
+  }
+
   const filtered = filter === 'all' ? requests : requests.filter(r => r.status === filter)
 
   return (
@@ -95,7 +129,7 @@ export default function EmergencyRequest() {
           </div>
           <p className="text-warm-500 text-sm mt-1">Post urgent blood requests and track donor responses from one place.</p>
         </div>
-        <button onClick={() => setShowForm(true)} className="btn-emergency px-5 py-3 text-sm"><Plus size={16} /> New request</button>
+        <button onClick={() => { setEditingId(null); setForm({ bloodType: '', urgency: '', units: 1, city: user?.city || '', latitude: '', longitude: '', notes: '' }); setShowForm(true) }} className="btn-emergency px-5 py-3 text-sm"><Plus size={16} /> New request</button>
       </div>
 
       {error && <ErrorState message={error} onRetry={load} />}
@@ -109,8 +143,8 @@ export default function EmergencyRequest() {
       {showForm && (
         <div className="bg-white rounded-2xl border-2 border-blood-200 shadow-lg animate-fade-in">
           <div className="flex items-center justify-between px-6 py-4 border-b border-warm-100">
-            <div className="flex items-center gap-2"><AlertCircle size={18} className="text-blood-600" /><h2 className="font-display font-semibold text-warm-900">Post emergency request</h2></div>
-            <button onClick={() => setShowForm(false)} className="p-1.5 rounded-lg text-warm-400 hover:bg-warm-100 transition-colors"><X size={16} /></button>
+            <div className="flex items-center gap-2"><AlertCircle size={18} className="text-blood-600" /><h2 className="font-display font-semibold text-warm-900">{editingId ? 'Edit emergency request' : 'Post emergency request'}</h2></div>
+            <button onClick={() => { setShowForm(false); setEditingId(null) }} className="p-1.5 rounded-lg text-warm-400 hover:bg-warm-100 transition-colors"><X size={16} /></button>
           </div>
           <div className="p-6 space-y-6">
             <div>
@@ -125,6 +159,31 @@ export default function EmergencyRequest() {
                 {URGENCY_LEVELS.map(u => <button key={u.value} onClick={() => update('urgency', u.value)} className={`p-4 rounded-xl border-2 text-left transition-all duration-150 ${form.urgency === u.value ? 'border-blood-500 bg-blood-50' : 'border-warm-200 bg-white hover:border-warm-300'}`}><p className="font-semibold text-sm mb-1 text-warm-800">{u.label}</p><p className="text-xs text-warm-500 leading-relaxed">{u.desc}</p></button>)}
               </div>
             </div>
+            <fieldset className="rounded-2xl border border-warm-200 bg-warm-50/60 p-4">
+              <legend className="px-2 text-xs font-bold uppercase tracking-wide text-warm-500">Where donors should go</legend>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block">
+                  <span className="label flex items-center gap-2"><Search size={13} /> City</span>
+                  <input value={form.city} onChange={e => update('city', e.target.value)} placeholder="e.g. Yaounde" className="input bg-white" />
+                </label>
+                <div>
+                  <span className="label flex items-center gap-2"><MapPin size={13} /> Coordinates</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input value={form.latitude} onChange={e => update('latitude', e.target.value)} placeholder="Latitude" className="input bg-white" />
+                    <input value={form.longitude} onChange={e => update('longitude', e.target.value)} placeholder="Longitude" className="input bg-white" />
+                  </div>
+                </div>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <button type="button" onClick={useCurrentLocation} className="inline-flex items-center gap-2 rounded-xl border border-blood-200 bg-white px-4 py-2 text-sm font-semibold text-blood-700 transition-colors hover:bg-blood-50">
+                  <LocateFixed size={15} /> Use current location
+                </button>
+                <a className="text-xs font-semibold text-blue-600 hover:text-blue-700" href="https://www.google.com/maps" target="_blank" rel="noreferrer">
+                  Open Google Maps for coordinates
+                </a>
+                {locationMessage && <p className="text-xs text-warm-500">{locationMessage}</p>}
+              </div>
+            </fieldset>
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
                 <label className="label">Units needed</label>
@@ -144,8 +203,8 @@ export default function EmergencyRequest() {
               <p className="text-xs text-blue-700 leading-relaxed">Use the smallest clear description. Donors only need enough context to decide quickly and safely.</p>
             </div>
             <div className="flex gap-3 pt-2">
-              <button onClick={handleSubmit} disabled={!form.bloodType || !form.urgency || saving} className="btn-primary px-6 py-3 disabled:opacity-40"><AlertCircle size={15} /> {saving ? 'Posting...' : 'Post request now'}</button>
-              <button onClick={() => setShowForm(false)} className="btn-secondary px-6 py-3">Cancel</button>
+              <button onClick={handleSubmit} disabled={!form.bloodType || !form.urgency || saving} className="btn-primary px-6 py-3 disabled:opacity-40"><AlertCircle size={15} /> {saving ? 'Saving...' : editingId ? 'Save changes' : 'Post request now'}</button>
+              <button onClick={() => { setShowForm(false); setEditingId(null) }} className="btn-secondary px-6 py-3">Cancel</button>
             </div>
           </div>
         </div>
@@ -179,6 +238,7 @@ export default function EmergencyRequest() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  {r.status === 'active' && <button onClick={() => startEdit(r)} className="p-2 rounded-xl text-warm-400 hover:bg-blue-50 hover:text-blue-600 transition-colors" title="Edit request"><Edit3 size={16} /></button>}
                   {r.status === 'active' && <button onClick={() => setCloseTarget(r)} className="p-2 rounded-xl text-warm-400 hover:bg-red-50 hover:text-red-600 transition-colors" title="Cancel request"><XCircle size={16} /></button>}
                   <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold flex-shrink-0 ${s.bg} ${s.text} ${s.border}`}><span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${s.dot}`} />{s.label}</span>
                 </div>

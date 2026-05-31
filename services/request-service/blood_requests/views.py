@@ -14,6 +14,7 @@ from .serializers import (
     CreateBloodRequestSerializer,
     DonorRespondSerializer,
     RequestResponseSerializer,
+    UpdateBloodRequestSerializer,
 )
 from .services import cancel_request, create_request, record_donor_response
 
@@ -71,6 +72,26 @@ class BloodRequestDetailView(APIView):
                 {"detail": "Request not found."},
                 status=status.HTTP_404_NOT_FOUND
             )
+        return Response(BloodRequestSerializer(blood_request).data)
+
+    def patch(self, request, pk):
+        try:
+            blood_request = BloodRequest.objects.get(pk=pk)
+        except BloodRequest.DoesNotExist:
+            return Response(
+                {"detail": "Request not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if blood_request.status in ["FULFILLED", "CANCELLED", "EXPIRED"]:
+            return Response(
+                {"detail": "Closed requests can no longer be changed."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = UpdateBloodRequestSerializer(blood_request, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
         return Response(BloodRequestSerializer(blood_request).data)
 
 
