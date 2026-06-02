@@ -12,7 +12,7 @@ services/
   auth-service/                   Django auth, JWT, roles, hospital verification
   donor-service/                  Django donor profile, matching, card, estimation service
   request-service/                Django emergency request lifecycle and donor responses
-  campaign-service/               Django campaign service scaffold
+  campaign-service/               Django campaigns, donor interest, myth-debunking articles
   notification-service/           Django in-app notifications, preferences, event consumer
 infrastructure/
   docker/                         Legacy Docker notes and helpers
@@ -77,6 +77,14 @@ http://localhost:8005/swagger/  # notification-service direct
 http://localhost:8005/redoc/
 ```
 
+Campaign API documentation:
+
+```bash
+http://localhost:8000/api/campaign/docs/
+http://localhost:8000/api/campaign/redoc/
+http://localhost:8004/api/docs/  # campaign-service direct
+```
+
 Django admin:
 
 ```bash
@@ -85,6 +93,7 @@ http://localhost:8000/django-admin/donor/
 http://localhost:8001/django-admin/  # auth-service direct
 http://localhost:8002/django-admin/  # donor-service direct
 http://localhost:8003/django-admin/  # request-service direct
+http://localhost:8004/django-admin/  # campaign-service direct
 http://localhost:8005/django-admin/  # notification-service direct
 ```
 
@@ -114,7 +123,9 @@ The first implemented milestone is authentication plus the donor profile depende
 - donor registration creates an auth user and calls donor-service internally
 - donor-service manages donor profile updates, donation history, virtual donor cards, screening centers, nearby matching, and the MVP blood-type estimation chat
 - request-service manages emergency request creation, active listings, donor responses, cancellation, and Redis lifecycle events
+- campaign-service manages donation campaign review workflows, donor interest, campaign progress reporting, public discovery, and myth-debunking articles
 - notification-service manages in-app notifications, unread state, preferences, internal notification creation, and Redis event consumption
+- donation workflow ties request, campaign, donor, and notification services together so donors can act and facilities can verify real donations
 - hospital registration creates an unverified hospital account pending admin approval
 - login issues SimpleJWT access and refresh tokens
 - unverified hospital login is blocked
@@ -135,7 +146,9 @@ config/settings/prod.py
 - [Auth API](docs/auth-api.md)
 - [Donor Service](docs/donor-service.md)
 - [Request Service](docs/request-service.md)
+- [Campaign Service](docs/campaign-service.md)
 - [Notification Service](docs/notification-service.md)
+- [Donation Workflow](docs/donation-workflow.md)
 - [Deployment Notes](docs/deployment.md)
 - [VPS Configuration](docs/vps_config.md)
 - [Jenkins Local Windows](docs/jenkins-local-windows.md)

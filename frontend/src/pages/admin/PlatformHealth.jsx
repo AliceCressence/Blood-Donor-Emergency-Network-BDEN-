@@ -11,8 +11,8 @@ export default function PlatformHealth() {
       </div>
 
       <div className="rounded-2xl border border-warm-200 bg-white p-5 flex items-center gap-4 shadow-sm dark:border-white/10 dark:bg-neutral-900">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-violet-900/40">
-          <Activity size={20} className="text-violet-400" />
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center border border-violet-100 bg-violet-50 dark:border-violet-700/40 dark:bg-violet-900/40">
+          <Activity size={20} className="text-violet-600 dark:text-violet-400" />
         </div>
         <div>
           <p className="font-semibold text-warm-950 dark:text-white">Monitoring is ready for data</p>

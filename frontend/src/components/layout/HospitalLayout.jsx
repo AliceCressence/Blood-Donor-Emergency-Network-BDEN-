@@ -151,9 +151,10 @@ export default function HospitalLayout() {
         <HospitalSidebar collapsed={collapsed} setCollapsed={setCollapsed} user={user} onAskLogout={() => setShowLogout(true)} />
       </div>
       {sidebarOpen && (
-        <div className="fixed inset-0 z-[900] flex lg:hidden">
-          <div className="w-[280px] p-4"><HospitalSidebar mobile user={user} onClose={() => setSidebarOpen(false)} onAskLogout={() => setShowLogout(true)} /></div>
-          <button className="flex-1 bg-black/45" onClick={() => setSidebarOpen(false)} aria-label="Close sidebar" />
+        <div className="fixed inset-0 z-[900] flex bg-black/60 p-3 backdrop-blur-sm lg:hidden">
+          <div className="h-full w-full overflow-y-auto rounded-[28px]">
+            <HospitalSidebar mobile user={user} onClose={() => setSidebarOpen(false)} onAskLogout={() => setShowLogout(true)} />
+          </div>
         </div>
       )}
       <main className={`min-h-screen transition-[padding] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${collapsed ? 'lg:pl-[108px]' : 'lg:pl-[296px]'}`}>

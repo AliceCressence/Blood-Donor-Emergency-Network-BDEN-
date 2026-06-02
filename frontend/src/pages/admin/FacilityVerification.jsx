@@ -21,6 +21,7 @@ export default function FacilityVerification() {
   const [facilities, setFacilities] = useState([])
   const [selected, setSelected] = useState(null)
   const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('PENDING')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [confirmAction, setConfirmAction] = useState(null)
@@ -29,7 +30,7 @@ export default function FacilityVerification() {
 
   const loadFacilities = () => {
     setLoading(true)
-    authService.listPendingHospitals()
+    authService.listHospitals({ status: statusFilter })
       .then(data => {
         setFacilities(data)
         setSelected(current => current ? data.find(item => item.id === current.id) || null : null)
@@ -41,7 +42,7 @@ export default function FacilityVerification() {
 
   useEffect(() => {
     let mounted = true
-    authService.listPendingHospitals()
+    authService.listHospitals({ status: statusFilter })
       .then(data => {
         if (!mounted) return
         setFacilities(data)
@@ -54,7 +55,7 @@ export default function FacilityVerification() {
         if (mounted) setLoading(false)
       })
     return () => { mounted = false }
-  }, [])
+  }, [statusFilter])
 
   const visible = useMemo(() => {
     const term = search.trim().toLowerCase()
@@ -77,7 +78,7 @@ export default function FacilityVerification() {
     setSaving(true)
     try {
       await authService.verifyHospital(selected.user_id, confirmAction, reason.trim())
-      setFacilities(items => items.filter(item => item.id !== selected.id))
+      setFacilities(items => statusFilter === 'PENDING' ? items.filter(item => item.id !== selected.id) : items.map(item => item.id === selected.id ? { ...item, verification_status: confirmAction === 'approve' ? 'APPROVED' : 'REJECTED' } : item))
       setSelected(null)
       setConfirmAction(null)
       setReason('')
@@ -99,12 +100,11 @@ export default function FacilityVerification() {
       {error && <ErrorState message={error} onRetry={loadFacilities} />}
 
       <div className="flex gap-2 flex-wrap">
-        <span className="text-xs font-semibold px-3 py-1.5 rounded-full border bg-violet-600 text-white border-violet-600">
-          Pending ({facilities.length})
-        </span>
-        <span className="text-xs font-semibold px-3 py-1.5 rounded-full border bg-white text-neutral-500 border-warm-200 dark:bg-neutral-800 dark:text-neutral-400 dark:border-neutral-700">
-          Approved and rejected history will appear when the admin API supports it
-        </span>
+        {['PENDING', 'APPROVED', 'REJECTED', 'ALL'].map(status => (
+          <button key={status} onClick={() => { setStatusFilter(status); setSelected(null) }} className={`text-xs font-semibold px-3 py-1.5 rounded-full border ${statusFilter === status ? 'bg-violet-600 text-white border-violet-600' : 'bg-white text-neutral-500 border-warm-200 hover:bg-warm-50 dark:bg-neutral-800 dark:text-neutral-400 dark:border-neutral-700'}`}>
+            {status === 'ALL' ? 'All history' : status.toLowerCase()} {status === statusFilter ? `(${facilities.length})` : ''}
+          </button>
+        ))}
       </div>
 
       <div className="relative">
@@ -112,7 +112,7 @@ export default function FacilityVerification() {
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Search pending facilities..."
+          placeholder={`Search ${statusFilter === 'ALL' ? 'facilities' : statusFilter.toLowerCase()} facilities...`}
           className="w-full bg-white border border-warm-200 rounded-xl pl-9 pr-4 py-2.5 text-sm text-warm-950 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-violet-500 dark:bg-neutral-900 dark:border-white/10 dark:text-white dark:placeholder:text-neutral-600"
         />
       </div>
@@ -141,8 +141,8 @@ export default function FacilityVerification() {
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <p className="text-sm font-semibold text-warm-950 dark:text-white leading-snug">{facility.facility_name}</p>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-amber-900/30 text-amber-400 border-amber-700/30 shrink-0">
-                    Pending
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-700/30 shrink-0">
+                    {facility.verification_status}
                   </span>
                 </div>
                 <p className="text-xs text-neutral-500">
@@ -166,7 +166,7 @@ export default function FacilityVerification() {
                       <p className="text-neutral-500 text-sm">{facilityTypeLabel[selected.facility_type] || selected.facility_type}</p>
                     </div>
                     <span className="text-xs font-bold px-2.5 py-1 rounded-full border bg-amber-900/30 text-amber-400 border-amber-700/30">
-                      Pending Review
+                      {selected.verification_status}
                     </span>
                   </div>
                 </div>
@@ -201,7 +201,7 @@ export default function FacilityVerification() {
                     </p>
                   </div>
 
-                  <div className="flex gap-3 pt-2">
+                  {selected.verification_status === 'PENDING' && <div className="flex gap-3 pt-2">
                     <button onClick={() => startAction('approve')}
                       className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold py-3 rounded-xl transition-colors">
                       <CheckCircle size={15} /> Approve Facility
@@ -210,7 +210,7 @@ export default function FacilityVerification() {
                       className="flex-1 flex items-center justify-center gap-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-600/30 text-sm font-semibold py-3 rounded-xl transition-colors">
                       <XCircle size={15} /> Reject
                     </button>
-                  </div>
+                  </div>}
                 </div>
               </div>
             ) : (

@@ -44,6 +44,12 @@ class CreateBloodRequestSerializer(serializers.ModelSerializer):
         return value
 
 
+class UpdateBloodRequestSerializer(CreateBloodRequestSerializer):
+    class Meta(CreateBloodRequestSerializer.Meta):
+        fields = CreateBloodRequestSerializer.Meta.fields
+        extra_kwargs = {field: {"required": False} for field in fields}
+
+
 class RequestResponseSerializer(serializers.ModelSerializer):
     class Meta:
         model  = RequestResponse

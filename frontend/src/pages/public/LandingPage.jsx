@@ -5,8 +5,13 @@ import {
   Droplets, AlertCircle, Heart, MapPin, Shield, Users,
   Building2, ChevronRight, Clock, CheckCircle, ArrowRight,
   TrendingUp, Zap, BookOpen, Phone, Mail, Globe,
-  Activity, Award, XCircle
+  Activity, Award, Maximize2, Minimize2, XCircle
 } from 'lucide-react'
+import { campaignApi, mythApi } from '../../services/app.service'
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler } from 'chart.js'
+import { Line } from 'react-chartjs-2'
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler)
 
 // ─── DATA ────────────────────────────────────────────────────────
 
@@ -42,54 +47,26 @@ const HOW_IT_WORKS = [
   },
 ]
 
-const MYTHS = [
+const VOICES = [
   {
-    myth:  'Donating blood makes you weak and sick',
-    truth: 'Your body replaces donated plasma within 24 hours. Most donors feel completely normal immediately after donation.',
-    source: 'WHO Guidelines',
+    quote: 'I was nervous the first time. Then a nurse told me the bag beside me could mean someone gets another birthday.',
+    author: 'Mireille',
+    role: 'First-time donor',
   },
   {
-    myth:  'You need to know your blood type to register',
-    truth: "BDEN accepts donors at every stage. You can register without a known blood type and we'll guide you to get tested.",
-    source: 'BDEN Platform',
+    quote: 'The hardest part was deciding to go. The calmest part was sitting there, realizing my body had something useful to give.',
+    author: 'Arnaud',
+    role: 'Voluntary donor',
   },
   {
-    myth:  'Blood donation is painful and time-consuming',
-    truth: 'The process takes about 30–45 minutes total. The actual blood draw is only 8–10 minutes with minimal discomfort.',
-    source: 'WHO Guidelines',
-  },
-]
-
-const CAMPAIGNS = [
-  {
-    hospital:  'Centre Hospitalier Universitaire de Yaoundé',
-    location:  'Yaoundé, Centre',
-    types:     ['O+', 'O-', 'A+'],
-    target:    120,
-    current:   74,
-    date:      'May 20, 2026',
-    benefit:   'Free malaria screening for all donors',
-    urgent:    false,
+    quote: 'When a request is urgent, clarity matters. A donor who knows where to go and why can move faster than a whole phone tree.',
+    author: 'BDEN partner facility',
+    role: 'Hospital team',
   },
   {
-    hospital:  'Hôpital Central de Yaoundé',
-    location:  'Yaoundé, Centre',
-    types:     ['B+', 'AB+'],
-    target:    60,
-    current:   18,
-    date:      'May 15, 2026',
-    benefit:   'Priority consultation access (3 months)',
-    urgent:    true,
-  },
-  {
-    hospital:  'Fondation Chantal Biya',
-    location:  'Yaoundé, Centre',
-    types:     ['A-', 'B-', 'AB-'],
-    target:    80,
-    current:   55,
-    date:      'May 25, 2026',
-    benefit:   'BDEN loyalty card + free blood typing',
-    urgent:    false,
+    quote: 'I did not feel heroic. I felt human. That was enough.',
+    author: 'Anonymous',
+    role: 'Community donor',
   },
 ]
 
@@ -153,10 +130,111 @@ function BloodPill({ type }) {
   )
 }
 
+function VoicesSpotlight() {
+  const [active, setActive] = useState(0)
+  const [expanded, setExpanded] = useState(false)
+  const [progressKey, setProgressKey] = useState(0) // Used to restart progress bar animation
+  const current = VOICES[active]
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActive(index => (index + 1) % VOICES.length)
+      setProgressKey(prev => prev + 1)
+    }, 10000)
+    return () => clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    document.body.style.overflow = expanded ? 'hidden' : ''
+    return () => { document.body.style.overflow = '' }
+  }, [expanded])
+
+  const next = () => {
+    setActive(index => (index + 1) % VOICES.length)
+    setProgressKey(prev => prev + 1)
+  }
+  const prev = () => {
+    setActive(index => (index - 1 + VOICES.length) % VOICES.length)
+    setProgressKey(prev => prev + 1)
+  }
+
+  const quoteBlock = (
+    <div key={active} className="animate-[voiceFade_900ms_ease_both] text-center">
+      <p className="mx-auto max-w-4xl font-display text-3xl font-bold leading-tight text-white sm:text-5xl lg:text-6xl">
+        “{current.quote}”
+      </p>
+      <p className="mt-8 text-sm font-semibold uppercase tracking-[0.28em] text-blood-100">
+        {current.author}{current.role ? ` · ${current.role}` : ''}
+      </p>
+    </div>
+  )
+
+  return (
+    <>
+      <section className="relative min-h-[76vh] overflow-hidden bg-blood-700">
+        <div className="absolute inset-0 opacity-30">
+          <div className="voice-lines absolute inset-0" />
+        </div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(255,255,255,.18),transparent_35%),linear-gradient(180deg,rgba(133,18,18,.1),rgba(38,15,12,.85))]" />
+        
+        {/* Progress Bar */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-black/20 z-30">
+          <div 
+            key={progressKey}
+            className="h-full bg-white/40 origin-left animate-progressFill"
+          />
+        </div>
+
+        <div className="relative z-10 flex min-h-[76vh] items-center justify-center px-6 py-24">
+          {quoteBlock}
+        </div>
+        <div className="absolute bottom-8 right-8 z-20 flex items-center gap-2 rounded-2xl border border-white/15 bg-white/10 p-2 backdrop-blur-xl">
+          <button onClick={prev} className="rounded-xl px-3 py-2 text-sm font-bold text-white hover:bg-white/10">Prev</button>
+          <button onClick={next} className="rounded-xl px-3 py-2 text-sm font-bold text-white hover:bg-white/10">Next</button>
+          <button onClick={() => setExpanded(true)} className="rounded-xl bg-white px-3 py-2 text-blood-700 shadow-lg hover:bg-blood-50" aria-label="Open spotlight fullscreen">
+            <Maximize2 size={16} />
+          </button>
+        </div>
+      </section>
+
+      {expanded && (
+        <div className="fixed inset-0 z-[1600] overflow-hidden bg-blood-800 animate-[spotlightExpand_420ms_cubic-bezier(0.22,1,0.36,1)_both]">
+          <div className="absolute inset-0 opacity-35"><div className="voice-lines absolute inset-0" /></div>
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(255,255,255,.2),transparent_34%),linear-gradient(180deg,rgba(229,17,17,.15),rgba(17,16,13,.92))]" />
+          
+          {/* Progress Bar for Fullscreen */}
+          <div className="absolute top-0 left-0 right-0 h-1.5 bg-black/20 z-30">
+            <div 
+              key={progressKey}
+              className="h-full bg-white/40 origin-left animate-progressFill"
+            />
+          </div>
+
+          <div className="absolute left-8 top-8 z-20 flex items-center gap-3">
+            <img src="/favicon.svg" alt="BDEN" className="h-11 w-11 rounded-2xl bg-white shadow-xl" />
+            <span className="font-display text-lg font-bold text-white">BDEN Voices</span>
+          </div>
+          <div className="relative z-10 flex h-full items-center justify-center px-6">
+            {quoteBlock}
+          </div>
+          <p className="absolute bottom-8 left-8 z-20 text-xs text-white/55">© 2026 BDEN. Shared human experiences from the network.</p>
+          <div className="absolute bottom-8 right-8 z-20 flex items-center gap-2 rounded-2xl border border-white/15 bg-white/10 p-2 backdrop-blur-xl">
+            <button onClick={prev} className="rounded-xl px-3 py-2 text-sm font-bold text-white hover:bg-white/10">Prev</button>
+            <button onClick={next} className="rounded-xl px-3 py-2 text-sm font-bold text-white hover:bg-white/10">Next</button>
+            <button onClick={() => setExpanded(false)} className="rounded-xl bg-white px-3 py-2 text-blood-700 shadow-lg hover:bg-blood-50" aria-label="Close spotlight fullscreen">
+              <Minimize2 size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
 // ─── CAMPAIGN CARD ───────────────────────────────────────────────
 
 function CampaignCard({ campaign, delay }) {
-  const pct = Math.round((campaign.current / campaign.target) * 100)
+  const pct = campaign.target ? Math.round((campaign.current / campaign.target) * 100) : 0
   return (
     <div
       className="bg-white rounded-2xl border border-warm-200 shadow-card p-6
@@ -188,7 +266,7 @@ function CampaignCard({ campaign, delay }) {
       <div className="mb-3">
         <div className="flex justify-between text-xs text-warm-500 mb-1.5">
           <span>{campaign.current} donors</span>
-          <span>Goal: {campaign.target}</span>
+          <span>Goal: {campaign.target || 'open'}</span>
         </div>
         <div className="h-1.5 bg-warm-100 rounded-full overflow-hidden">
           <div
@@ -207,12 +285,120 @@ function CampaignCard({ campaign, delay }) {
   )
 }
 
+// ─── IMPACT CHART SECTION ────────────────────────────────────────
+
+function ImpactChartSection() {
+  const data = {
+    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+    datasets: [
+      {
+        label: 'Donations Collected',
+        data: [1200, 1900, 1500, 2200, 2800, 3100],
+        borderColor: '#14B8A6', // teal-500
+        backgroundColor: 'rgba(20, 184, 166, 0.15)', // teal translucent
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: '#14B8A6',
+      },
+      {
+        label: 'Emergency Requests',
+        data: [800, 1100, 950, 1300, 1600, 1400],
+        borderColor: '#E51111', // blood-600
+        backgroundColor: 'rgba(229, 17, 17, 0.1)', // blood translucent
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: '#E51111',
+      }
+    ]
+  }
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: { font: { family: 'DM Sans' }, color: '#666358', usePointStyle: true, padding: 20 }
+      },
+      tooltip: {
+        mode: 'index',
+        intersect: false,
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        grid: { color: '#E8E7E1', borderDash: [4, 4] },
+        ticks: { color: '#7F7C6E', padding: 10 }
+      },
+      x: {
+        grid: { display: false },
+        ticks: { color: '#7F7C6E', padding: 10 }
+      }
+    },
+    interaction: {
+      mode: 'nearest',
+      axis: 'x',
+      intersect: false
+    }
+  }
+
+  return (
+    <section className="py-24 bg-warm-50 relative overflow-hidden">
+      <div className="page-container relative z-10">
+        <div className="text-center mb-14">
+          <span className="text-xs font-semibold uppercase tracking-widest text-teal-600 mb-3 block">
+            Impact Metrics
+          </span>
+          <h2 className="font-display text-4xl font-bold text-warm-900 tracking-tight mb-3">
+            Real-time Network Activity
+          </h2>
+          <p className="text-warm-500 text-base max-w-xl mx-auto">
+            See how the community is responding to regional blood shortages over the last six months.
+          </p>
+        </div>
+        
+        <div className="max-w-4xl mx-auto bg-white p-6 md:p-8 rounded-3xl shadow-card border border-warm-200">
+          <div className="h-[350px] w-full">
+            <Line data={data} options={options} />
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+
 // ─── MAIN COMPONENT ──────────────────────────────────────────────
 
 export default function LandingPage() {
   const [activeRole, setActiveRole] = useState(0)
+  const [campaigns, setCampaigns] = useState([])
+  const [myths, setMyths] = useState([])
   const [statsRef, statsInView] = useInView(0.3)
   const [howRef,   howInView]   = useInView(0.2)
+
+  useEffect(() => {
+    campaignApi.list().then(data => {
+      setCampaigns(data.slice(0, 3).map(item => ({
+        hospital: item.hospitalName,
+        location: [item.city, item.address].filter(Boolean).join(', ') || 'Cameroon',
+        types: item.bloodTypes.length ? item.bloodTypes : ['All'],
+        target: item.targetDonors,
+        current: item.actualDonors,
+        date: item.startDate ? new Date(item.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Soon',
+        benefit: item.incentives || 'Warm welcome from the hospital team',
+        urgent: item.bloodTypes.includes('O−'),
+      })))
+    }).catch(() => setCampaigns([]))
+    mythApi.list().then(data => {
+      setMyths(data.slice(0, 3).map(item => ({
+        myth: item.myth_statement,
+        truth: item.truth_statement,
+        source: item.source || 'BDEN medical review',
+      })))
+    }).catch(() => setMyths([]))
+  }, [])
 
   return (
     <div className="overflow-x-hidden">
@@ -471,11 +657,17 @@ export default function LandingPage() {
             </Link>
           </div>
 
+          {campaigns.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-warm-200 bg-warm-50 p-8 text-center text-warm-500">
+              Approved campaigns will appear here as hospitals publish them.
+            </div>
+          ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {CAMPAIGNS.map((c, i) => (
+            {campaigns.map((c, i) => (
               <CampaignCard key={c.hospital} campaign={c} delay={i * 100} />
             ))}
           </div>
+          )}
 
           <div className="md:hidden text-center mt-8">
             <Link to="/campaigns" className="text-sm font-semibold text-blood-600">
@@ -508,8 +700,13 @@ export default function LandingPage() {
             </p>
           </div>
 
+          {myths.length === 0 ? (
+            <div className="mb-12 rounded-2xl border border-warm-800 bg-warm-900/50 p-8 text-center text-warm-500">
+              Myth-busting articles will appear here once the team publishes them.
+            </div>
+          ) : (
           <div className="grid md:grid-cols-3 gap-6 mb-12">
-            {MYTHS.map((m, i) => (
+            {myths.map((m, i) => (
               <div key={i}
                    className="rounded-2xl border border-warm-800 bg-warm-900/50 backdrop-blur-sm p-6
                               hover:border-warm-600 transition-colors duration-300">
@@ -541,6 +738,7 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
+          )}
 
           <div className="text-center">
             <Link to="/myths"
@@ -553,6 +751,16 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* ══════════════════════════════════════
+          COMMUNITY VOICES
+      ══════════════════════════════════════ */}
+      <VoicesSpotlight />
+
+      {/* ══════════════════════════════════════
+          IMPACT CHART
+      ══════════════════════════════════════ */}
+      <ImpactChartSection />
 
 
       {/* ══════════════════════════════════════
@@ -640,11 +848,18 @@ export default function LandingPage() {
             <div>
               <p className="text-white font-semibold text-sm mb-4">Platform</p>
               <ul className="space-y-2.5 text-sm">
-                {['Campaigns', 'Myth debunking', 'Register as donor', 'Partner as hospital'].map(l => (
-                  <li key={l}>
-                    <Link to="/" className="hover:text-white transition-colors">{l}</Link>
-                  </li>
-                ))}
+                <li>
+                  <Link to="/campaigns" className="hover:text-white transition-colors">Campaigns</Link>
+                </li>
+                <li>
+                  <Link to="/myths" className="hover:text-white transition-colors">Myth debunking</Link>
+                </li>
+                <li>
+                  <Link to="/auth/user/login" className="hover:text-white transition-colors">Register as donor</Link>
+                </li>
+                <li>
+                  <Link to="/auth/hospital/login" className="hover:text-white transition-colors">Partner as hospital</Link>
+                </li>
               </ul>
             </div>
 

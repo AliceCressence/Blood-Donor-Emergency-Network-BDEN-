@@ -149,6 +149,10 @@ export default {
           '0%, 100%': { boxShadow: '0 0 0 0 rgba(229,17,17,0.4)' },
           '50%':       { boxShadow: '0 0 0 8px rgba(229,17,17,0)' },
         },
+        'progressFill': {
+          from: { transform: 'scaleX(0)' },
+          to:   { transform: 'scaleX(1)' }
+        },
         'slide-in-right': {
           from: { transform: 'translateX(100%)', opacity: '0' },
           to:   { transform: 'translateX(0)',    opacity: '1' },
@@ -158,6 +162,7 @@ export default {
         'fade-in':        'fade-in 0.35s ease-out both',
         'fade-in-fast':   'fade-in-fast 0.2s ease-out both',
         'pulse-red':      'pulse-red 2s ease-in-out infinite',
+        'progressFill':   'progressFill 10s linear forwards',
         'slide-in-right': 'slide-in-right 0.3s ease-out both',
       },
 
