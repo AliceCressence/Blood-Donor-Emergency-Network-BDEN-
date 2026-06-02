@@ -14,7 +14,7 @@ schema_view = get_schema_view(
         default_version="v1",
         description=(
             "Manages donation campaigns and myth-debunking articles. Campaigns require admin approval "
-            "before becoming publicly visible. Myth articles are admin-managed and publicly readable."
+            "before becoming publicly visible. Myth articles and donor dashboard banners are admin-managed."
         ),
         contact=openapi.Contact(email="dev@bden.cm"),
     ),
@@ -25,6 +25,7 @@ schema_view = get_schema_view(
 urlpatterns = [
     path("django-admin/", admin.site.urls),
     path("admin/", RedirectView.as_view(url="/django-admin/", permanent=False)),
+    path("api/ads/", include("ads.urls")),
     path("api/campaigns/", include("campaigns.urls")),
     path("api/myths/", include("myths.urls")),
     path("api/docs/", schema_view.with_ui("swagger", cache_timeout=0), name="schema-swagger-ui"),

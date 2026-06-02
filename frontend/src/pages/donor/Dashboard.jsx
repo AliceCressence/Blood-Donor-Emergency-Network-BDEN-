@@ -5,7 +5,7 @@ import {
   CreditCard, Droplets, Heart, MapPin, User, Users,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
-import { campaignApi, donorApi, requestApi } from '../../services/app.service'
+import { adApi, campaignApi, donorApi, requestApi } from '../../services/app.service'
 import { CardShimmer, EmptyState, ErrorState, InfoTip } from '../../components/shared/DataStates'
 
 function StatCard({ icon: Icon, label, value, sub, color = 'blood' }) {
@@ -42,6 +42,7 @@ export default function DonorDashboard() {
   const [card, setCard] = useState(null)
   const [requests, setRequests] = useState([])
   const [campaigns, setCampaigns] = useState([])
+  const [banner, setBanner] = useState(null)
   const [donations, setDonations] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -51,18 +52,20 @@ export default function DonorDashboard() {
     setLoading(true)
     setError('')
     try {
-      const [profileData, cardData, donationData, requestData, campaignData] = await Promise.all([
+      const [profileData, cardData, donationData, requestData, campaignData, bannerData] = await Promise.all([
         donorApi.getProfile(),
         donorApi.getCard().catch(() => null),
         donorApi.getDonations().catch(() => []),
         requestApi.list({ status: 'ACTIVE', blood_type: userBloodType?.replace('−', '-') || undefined }).catch(() => []),
         campaignApi.list({ blood_type: userBloodType?.replace('−', '-') || undefined }).catch(() => []),
+        adApi.activeDonorBanner().catch(() => null),
       ])
       setProfile(profileData)
       setCard(cardData)
       setDonations(donationData)
       setRequests(requestData.slice(0, 4))
       setCampaigns(campaignData.slice(0, 3))
+      setBanner(bannerData)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -137,6 +140,14 @@ export default function DonorDashboard() {
           {canDonate ? 'View needs' : 'View card'} <ChevronRight size={14} />
         </Link>
       </div>
+
+      {banner?.image_url && (
+        <div className="overflow-hidden rounded-2xl border border-neutral-100 bg-white shadow-sm">
+          <div className="aspect-video w-full bg-warm-100">
+            <img src={banner.image_url} alt={banner.alt_text || banner.title || 'BDEN donor dashboard banner'} className="h-full w-full object-cover" />
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard icon={Droplets} label="Total donations" value={totalDonations} sub={hasDonationHistory ? `${profile?.total_volume_ml || 0} ml recorded` : 'Your first verified donation will appear here'} color="blood" />

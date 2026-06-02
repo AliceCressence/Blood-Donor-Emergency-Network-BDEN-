@@ -371,3 +371,38 @@ export const mythApi = {
     }
   },
 }
+
+export const adApi = {
+  async activeDonorBanner() {
+    try {
+      const { data } = await api.get('/api/ads/donor-dashboard/active/')
+      return data
+    } catch (error) {
+      throw new Error(getApiError(error), { cause: error })
+    }
+  },
+  async listDonorBanners() {
+    try {
+      const { data } = await api.get('/api/ads/donor-dashboard/admin/')
+      return data
+    } catch (error) {
+      throw new Error(getApiError(error), { cause: error })
+    }
+  },
+  async createDonorBanner(payload) {
+    try {
+      const { data } = await api.post('/api/ads/donor-dashboard/admin/', payload)
+      return data
+    } catch (error) {
+      throw new Error(getApiError(error), { cause: error })
+    }
+  },
+  async updateDonorBanner(id, payload) {
+    try {
+      const { data } = await api.patch(`/api/ads/donor-dashboard/admin/${id}/`, payload)
+      return data
+    } catch (error) {
+      throw new Error(getApiError(error), { cause: error })
+    }
+  },
+}
