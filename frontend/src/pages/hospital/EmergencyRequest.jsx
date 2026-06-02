@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AlertCircle, CheckCircle, Clock, Droplets, Edit3, Info, LocateFixed, MapPin, Plus, Search, Users, X, XCircle } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
-import { requestApi } from '../../services/app.service'
+import { donorApi, requestApi } from '../../services/app.service'
 import { CardShimmer, ConfirmModal, EmptyState, ErrorState, InfoTip } from '../../components/shared/DataStates'
 
 const BLOOD_TYPES = ['A+', 'A−', 'B+', 'B−', 'AB+', 'AB−', 'O+', 'O−']
@@ -36,6 +36,10 @@ export default function EmergencyRequest() {
   const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState({ bloodType: '', urgency: '', units: 1, city: user?.city || '', latitude: '', longitude: '', notes: '' })
   const [locationMessage, setLocationMessage] = useState('')
+  const [responsesByRequest, setResponsesByRequest] = useState({})
+  const [responsesLoading, setResponsesLoading] = useState({})
+  const [recordTarget, setRecordTarget] = useState(null)
+  const [recordForm, setRecordForm] = useState({ volumeMl: 450, donationDate: new Date().toISOString().slice(0, 10), notes: '' })
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -115,6 +119,54 @@ export default function EmergencyRequest() {
       () => setLocationMessage('We could not read your location. You can enter the city and coordinates manually.'),
       { enableHighAccuracy: true, timeout: 10000 },
     )
+  }
+
+  const toggleResponses = async requestId => {
+    if (responsesByRequest[requestId]) {
+      setResponsesByRequest(current => {
+        const next = { ...current }
+        delete next[requestId]
+        return next
+      })
+      return
+    }
+    setResponsesLoading(current => ({ ...current, [requestId]: true }))
+    try {
+      const responses = await requestApi.responses(requestId)
+      setResponsesByRequest(current => ({ ...current, [requestId]: responses }))
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setResponsesLoading(current => ({ ...current, [requestId]: false }))
+    }
+  }
+
+  const openRecordDonation = (requestItem, responseItem) => {
+    setRecordTarget({ request: requestItem, response: responseItem })
+    setRecordForm({ volumeMl: 450, donationDate: new Date().toISOString().slice(0, 10), notes: '' })
+  }
+
+  const recordDonation = async () => {
+    if (!recordTarget) return
+    try {
+      await donorApi.recordDonation({
+        donor_user_id: recordTarget.response.donorId,
+        source_type: 'EMERGENCY_REQUEST',
+        source_id: recordTarget.request.id,
+        facility_name: user?.facilityName || user?.name || recordTarget.request.hospital || 'Hospital',
+        facility_user_id: user?.id,
+        volume_ml: Number(recordForm.volumeMl || 450),
+        donation_date: recordForm.donationDate,
+        notes: recordForm.notes,
+      })
+      const updated = await requestApi.close(recordTarget.request.id, 'FULFILLED')
+      setRequests(prev => prev.map(r => r.id === updated.id ? updated : r))
+      setSubmitted(true)
+      setTimeout(() => setSubmitted(false), 4000)
+      setRecordTarget(null)
+    } catch (err) {
+      setError(err.message)
+    }
   }
 
   const filtered = filter === 'all' ? requests : requests.filter(r => r.status === filter)
@@ -239,10 +291,44 @@ export default function EmergencyRequest() {
                 </div>
                 <div className="flex items-center gap-2">
                   {r.status === 'active' && <button onClick={() => startEdit(r)} className="p-2 rounded-xl text-warm-400 hover:bg-blue-50 hover:text-blue-600 transition-colors" title="Edit request"><Edit3 size={16} /></button>}
+                  <button onClick={() => toggleResponses(r.id)} className="rounded-xl border border-warm-200 px-3 py-2 text-xs font-semibold text-warm-600 transition-colors hover:bg-warm-50" title="View donor responses">
+                    {responsesByRequest[r.id] ? 'Hide donors' : 'View donors'}
+                  </button>
                   {r.status === 'active' && <button onClick={() => setCloseTarget(r)} className="p-2 rounded-xl text-warm-400 hover:bg-red-50 hover:text-red-600 transition-colors" title="Cancel request"><XCircle size={16} /></button>}
                   <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold flex-shrink-0 ${s.bg} ${s.text} ${s.border}`}><span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${s.dot}`} />{s.label}</span>
                 </div>
               </div>
+              {(responsesByRequest[r.id] || responsesLoading[r.id]) && (
+                <div className="mt-5 rounded-2xl border border-warm-100 bg-warm-50/70 p-4">
+                  <div className="mb-3 flex items-center justify-between">
+                    <p className="flex items-center gap-2 text-sm font-bold text-warm-900"><Users size={15} /> Donor responses</p>
+                    {responsesLoading[r.id] && <span className="text-xs text-warm-400">Loading...</span>}
+                  </div>
+                  {!responsesLoading[r.id] && (responsesByRequest[r.id] || []).length === 0 && (
+                    <p className="rounded-xl border border-dashed border-warm-200 bg-white p-4 text-sm text-warm-500">No donor has responded yet. When someone accepts or declines, they will appear here.</p>
+                  )}
+                  <div className="space-y-2">
+                    {(responsesByRequest[r.id] || []).map(response => (
+                      <div key={response.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white p-3 shadow-sm">
+                        <div>
+                          <p className="font-semibold text-warm-950">{response.donorName}</p>
+                          <p className="text-xs text-warm-500">
+                            {response.donorBloodType || 'Blood type not shared'} · {response.donorPhone || 'No phone shared'} · {response.status || 'pending'}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {response.distanceKm && <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">{response.distanceKm} km</span>}
+                          {response.status === 'accepted' && (
+                            <button onClick={() => openRecordDonation(r, response)} className="rounded-xl bg-blood-600 px-3 py-2 text-xs font-bold text-white hover:bg-blood-700">
+                              Record donation
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )
         })}
@@ -257,6 +343,27 @@ export default function EmergencyRequest() {
         onCancel={() => setCloseTarget(null)}
         onConfirm={closeRequest}
       />
+
+      <ConfirmModal
+        open={Boolean(recordTarget)}
+        title="Record this donation?"
+        description="This verifies the donor's donation history and marks this emergency request as fulfilled. Only continue after the donation happened at your facility."
+        confirmLabel="Record donation"
+        onCancel={() => setRecordTarget(null)}
+        onConfirm={recordDonation}
+      >
+        <div className="mt-4 grid gap-3 text-left">
+          <label className="text-xs font-semibold text-warm-500">Volume collected (ml)
+            <input className="input mt-1" type="number" min="350" value={recordForm.volumeMl} onChange={e => setRecordForm(f => ({ ...f, volumeMl: e.target.value }))} />
+          </label>
+          <label className="text-xs font-semibold text-warm-500">Donation date
+            <input className="input mt-1" type="date" value={recordForm.donationDate} onChange={e => setRecordForm(f => ({ ...f, donationDate: e.target.value }))} />
+          </label>
+          <label className="text-xs font-semibold text-warm-500">Notes
+            <textarea className="input mt-1 min-h-20" value={recordForm.notes} onChange={e => setRecordForm(f => ({ ...f, notes: e.target.value }))} placeholder="Optional internal note" />
+          </label>
+        </div>
+      </ConfirmModal>
     </div>
   )
 }

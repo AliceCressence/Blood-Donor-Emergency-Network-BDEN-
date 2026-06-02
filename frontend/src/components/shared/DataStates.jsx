@@ -42,7 +42,7 @@ export function ErrorState({ message, onRetry }) {
   )
 }
 
-export function ConfirmModal({ open, title, description, confirmLabel = 'Confirm', danger = false, loading = false, onConfirm, onCancel }) {
+export function ConfirmModal({ open, title, description, confirmLabel = 'Confirm', danger = false, loading = false, onConfirm, onCancel, children }) {
   if (!open) return null
   return (
     <div className="fixed inset-0 z-[1200] flex items-center justify-center px-4">
@@ -53,6 +53,7 @@ export function ConfirmModal({ open, title, description, confirmLabel = 'Confirm
         </button>
         <h2 className="font-display text-xl font-bold text-warm-950 pr-8">{title}</h2>
         <p className="text-sm text-warm-500 mt-2 leading-relaxed">{description}</p>
+        {children}
         <div className="flex gap-3 mt-6">
           <button onClick={onCancel} className="btn-secondary flex-1">Cancel</button>
           <button

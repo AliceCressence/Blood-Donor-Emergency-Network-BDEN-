@@ -4,7 +4,7 @@ import {
   Plus, Save, Search, Send, Tag, Users, X,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
-import { campaignApi } from '../../services/app.service'
+import { campaignApi, donorApi } from '../../services/app.service'
 import { CardShimmer, ConfirmModal, EmptyState, ErrorState } from '../../components/shared/DataStates'
 
 const BLOOD_TYPES = ['A+', 'A−', 'B+', 'B−', 'AB+', 'AB−', 'O+', 'O−']
@@ -74,7 +74,7 @@ function toForm(campaign) {
   }
 }
 
-function CampaignDetail({ campaign, progress, setProgress, savingProgress, onProgress, onCancelAsk, onEdit }) {
+function CampaignDetail({ campaign, progress, setProgress, savingProgress, onProgress, onCancelAsk, onEdit, interests, loadingInterests, onLoadInterests, onRecordDonation }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-neutral-100 bg-white shadow-sm dark:border-white/10 dark:bg-warm-950/70">
       <div className="border-b border-neutral-100 px-6 py-5 dark:border-white/10">
@@ -119,6 +119,37 @@ function CampaignDetail({ campaign, progress, setProgress, savingProgress, onPro
           <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-neutral-500">Reported progress</p>
           <ProgressBar value={campaign.actualDonors} target={campaign.targetDonors} />
           <p className="mt-2 text-xs text-neutral-400">Reported by facility. Keep this updated after collection days.</p>
+        </div>
+
+        <div className="rounded-2xl border border-neutral-100 bg-neutral-50 p-4 dark:border-white/10 dark:bg-white/5">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-neutral-900 dark:text-white">Interested donors</p>
+              <p className="text-xs text-neutral-500">People who told you they may attend this campaign.</p>
+            </div>
+            <button onClick={onLoadInterests} className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-600 hover:bg-neutral-50 dark:border-white/10 dark:bg-white/5 dark:text-warm-300">
+              {interests ? 'Refresh' : 'View donors'}
+            </button>
+          </div>
+          {loadingInterests && <p className="text-sm text-neutral-400">Loading donor interest...</p>}
+          {!loadingInterests && interests && interests.length === 0 && (
+            <p className="rounded-xl border border-dashed border-neutral-200 bg-white p-4 text-sm text-neutral-500 dark:border-white/10 dark:bg-warm-950/50">No one has registered interest yet.</p>
+          )}
+          {!loadingInterests && interests?.length > 0 && (
+            <div className="space-y-2">
+              {interests.map(interest => (
+                <div key={interest.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white p-3 shadow-sm dark:bg-warm-950/70">
+                  <div>
+                    <p className="text-sm font-semibold text-neutral-900 dark:text-white">Donor {String(interest.donor_user_id).slice(0, 8)}</p>
+                    <p className="text-xs text-neutral-500">Interested since {new Date(interest.registered_at).toLocaleString()}</p>
+                  </div>
+                  <button onClick={() => onRecordDonation(interest)} className="rounded-xl bg-blood-600 px-3 py-2 text-xs font-bold text-white hover:bg-blood-700">
+                    Record donation
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {campaign.status !== 'pending' && campaign.status !== 'rejected' && campaign.status !== 'cancelled' && (
@@ -166,6 +197,10 @@ export default function CampaignManager() {
   const [savingProgress, setSavingProgress] = useState(false)
   const [progress, setProgress] = useState({ actualDonors: 0, actualVolumeMl: 0 })
   const [cancelOpen, setCancelOpen] = useState(false)
+  const [interestsByCampaign, setInterestsByCampaign] = useState({})
+  const [loadingInterests, setLoadingInterests] = useState(false)
+  const [recordTarget, setRecordTarget] = useState(null)
+  const [recordForm, setRecordForm] = useState({ volumeMl: 450, donationDate: new Date().toISOString().slice(0, 10), notes: '' })
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -273,6 +308,49 @@ export default function CampaignManager() {
       setError(err.message)
     } finally {
       setCancelOpen(false)
+    }
+  }
+
+  const loadInterests = async () => {
+    if (!selected) return
+    setLoadingInterests(true)
+    try {
+      const data = await campaignApi.interests(selected.id)
+      setInterestsByCampaign(current => ({ ...current, [selected.id]: data }))
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoadingInterests(false)
+    }
+  }
+
+  const openRecordDonation = interest => {
+    setRecordTarget({ campaign: selected, interest })
+    setRecordForm({ volumeMl: 450, donationDate: new Date().toISOString().slice(0, 10), notes: '' })
+  }
+
+  const recordDonation = async () => {
+    if (!recordTarget) return
+    try {
+      await donorApi.recordDonation({
+        donor_user_id: recordTarget.interest.donor_user_id,
+        source_type: 'CAMPAIGN',
+        source_id: recordTarget.campaign.id,
+        facility_name: user?.facilityName || user?.name || recordTarget.campaign.hospitalName || 'Hospital',
+        facility_user_id: user?.id,
+        volume_ml: Number(recordForm.volumeMl || 450),
+        donation_date: recordForm.donationDate,
+        notes: recordForm.notes,
+      })
+      const updated = await campaignApi.updateProgress(recordTarget.campaign.id, {
+        actualDonors: (recordTarget.campaign.actualDonors || 0) + 1,
+        actualVolumeMl: (recordTarget.campaign.actualVolumeMl || 0) + Number(recordForm.volumeMl || 450),
+      })
+      setCampaigns(current => current.map(item => item.id === updated.id ? updated : item))
+      setSelected(updated)
+      setRecordTarget(null)
+    } catch (err) {
+      setError(err.message)
     }
   }
 
@@ -418,7 +496,19 @@ export default function CampaignManager() {
 
         <div className="lg:col-span-3">
           {selected ? (
-            <CampaignDetail campaign={selected} progress={progress} setProgress={setProgress} savingProgress={savingProgress} onProgress={saveProgress} onCancelAsk={() => setCancelOpen(true)} onEdit={() => startEdit(selected)} />
+            <CampaignDetail
+              campaign={selected}
+              progress={progress}
+              setProgress={setProgress}
+              savingProgress={savingProgress}
+              onProgress={saveProgress}
+              onCancelAsk={() => setCancelOpen(true)}
+              onEdit={() => startEdit(selected)}
+              interests={interestsByCampaign[selected.id]}
+              loadingInterests={loadingInterests}
+              onLoadInterests={loadInterests}
+              onRecordDonation={openRecordDonation}
+            />
           ) : (
             <div className="flex h-64 items-center justify-center rounded-2xl border border-neutral-100 bg-white dark:border-white/10 dark:bg-warm-950/70">
               <div className="text-center text-neutral-400">
@@ -439,6 +529,27 @@ export default function CampaignManager() {
         onConfirm={cancelCampaign}
         onCancel={() => setCancelOpen(false)}
       />
+
+      <ConfirmModal
+        open={Boolean(recordTarget)}
+        title="Record campaign donation?"
+        description="Use this after the donor has actually donated at the campaign. Their donor history and your campaign progress will both be updated."
+        confirmLabel="Record donation"
+        onConfirm={recordDonation}
+        onCancel={() => setRecordTarget(null)}
+      >
+        <div className="mt-4 grid gap-3 text-left">
+          <label className="text-xs font-semibold text-warm-500">Volume collected (ml)
+            <input className="input mt-1" type="number" min="350" value={recordForm.volumeMl} onChange={e => setRecordForm(f => ({ ...f, volumeMl: e.target.value }))} />
+          </label>
+          <label className="text-xs font-semibold text-warm-500">Donation date
+            <input className="input mt-1" type="date" value={recordForm.donationDate} onChange={e => setRecordForm(f => ({ ...f, donationDate: e.target.value }))} />
+          </label>
+          <label className="text-xs font-semibold text-warm-500">Notes
+            <textarea className="input mt-1 min-h-20" value={recordForm.notes} onChange={e => setRecordForm(f => ({ ...f, notes: e.target.value }))} placeholder="Optional note for this campaign record" />
+          </label>
+        </div>
+      </ConfirmModal>
     </div>
   )
 }

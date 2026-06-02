@@ -1,7 +1,7 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
-from .models import DonationCampaign, VALID_BLOOD_TYPES
+from .models import CampaignInterest, DonationCampaign, VALID_BLOOD_TYPES
 
 
 class DonationCampaignSerializer(serializers.ModelSerializer):
@@ -63,6 +63,13 @@ class DonationCampaignSerializer(serializers.ModelSerializer):
 
     def get_distance_km(self, obj):
         return getattr(obj, "_distance_km", None)
+
+
+class CampaignInterestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CampaignInterest
+        fields = ["id", "campaign", "donor_user_id", "registered_at"]
+        read_only_fields = fields
 
 
 class CreateCampaignSerializer(serializers.ModelSerializer):

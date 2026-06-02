@@ -106,11 +106,20 @@ http://localhost:8004/api/myths/
 http://localhost:8000/api/campaign/docs/
 ```
 
-Campaign approval publishes Redis events such as `CAMPAIGN_APPROVED`; notification-service can consume those later for donor and hospital notifications.
+Campaign approval publishes Redis events such as `CAMPAIGN_APPROVED`; notification-service consumes those to create donor notifications when compatible nearby donors are found.
 
 ## Request And Notification Events
 
 Request-service publishes lifecycle events to Redis channel `bden.events`. Notification-service consumes the same channel and can also receive direct internal notification creation calls.
+
+For the donation loop to work end to end:
+
+- request-service must reach donor-service through `DONOR_SERVICE_URL` for nearby donor matching.
+- campaign-service must reach donor-service through `DONOR_SERVICE_INTERNAL_URL` for campaign approval matching.
+- notification-service consumer must be running so matched donors and hospitals receive in-app notifications.
+- verified hospitals/admins record actual donations through donor-service after the donor arrives and donates.
+
+See [Donation Workflow](donation-workflow.md) for the matching rules, donor actions, and hospital verification flow.
 
 Manual consumers:
 

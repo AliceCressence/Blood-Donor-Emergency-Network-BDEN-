@@ -143,7 +143,7 @@ export default function DonorDashboard() {
 
       {banner?.image_url && (
         <div className="overflow-hidden rounded-2xl border border-neutral-100 bg-white shadow-sm">
-          <div className="aspect-video w-full bg-warm-100">
+          <div className="aspect-[16/7] w-full bg-warm-100 sm:aspect-[16/5] lg:aspect-[16/4]">
             <img src={banner.image_url} alt={banner.alt_text || banner.title || 'BDEN donor dashboard banner'} className="h-full w-full object-cover" />
           </div>
         </div>

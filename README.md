@@ -125,6 +125,7 @@ The first implemented milestone is authentication plus the donor profile depende
 - request-service manages emergency request creation, active listings, donor responses, cancellation, and Redis lifecycle events
 - campaign-service manages donation campaign review workflows, donor interest, campaign progress reporting, public discovery, and myth-debunking articles
 - notification-service manages in-app notifications, unread state, preferences, internal notification creation, and Redis event consumption
+- donation workflow ties request, campaign, donor, and notification services together so donors can act and facilities can verify real donations
 - hospital registration creates an unverified hospital account pending admin approval
 - login issues SimpleJWT access and refresh tokens
 - unverified hospital login is blocked
@@ -147,6 +148,7 @@ config/settings/prod.py
 - [Request Service](docs/request-service.md)
 - [Campaign Service](docs/campaign-service.md)
 - [Notification Service](docs/notification-service.md)
+- [Donation Workflow](docs/donation-workflow.md)
 - [Deployment Notes](docs/deployment.md)
 - [VPS Configuration](docs/vps_config.md)
 - [Jenkins Local Windows](docs/jenkins-local-windows.md)

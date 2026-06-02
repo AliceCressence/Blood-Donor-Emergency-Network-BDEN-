@@ -10,6 +10,7 @@ from .models import DonationCampaign
 from .permissions import IsAdmin, IsDonor, IsVerifiedHospital
 from .serializers import (
     CampaignCancelSerializer,
+    CampaignInterestSerializer,
     CampaignProgressSerializer,
     CampaignReviewSerializer,
     CreateCampaignSerializer,
@@ -210,3 +211,16 @@ class CampaignInterestView(APIView):
         campaign = get_object_or_404(DonationCampaign, pk=pk, status__in=["APPROVED", "ONGOING"])
         deleted = CampaignService().withdraw_interest(campaign, request.user.id)
         return Response({"deleted": bool(deleted), "interested_count": campaign.interested_count})
+
+
+class CampaignInterestsListView(APIView):
+    permission_classes = [IsAuthenticated, IsVerifiedHospital]
+
+    @swagger_auto_schema(
+        operation_summary="List donor interest for one of my campaigns",
+        responses={200: CampaignInterestSerializer(many=True)},
+        tags=["Hospital Campaigns"],
+    )
+    def get(self, request, pk):
+        campaign = get_object_or_404(DonationCampaign, pk=pk, hospital_user_id=request.user.id)
+        return Response(CampaignInterestSerializer(campaign.interests.order_by("-registered_at"), many=True).data)

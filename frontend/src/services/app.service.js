@@ -47,6 +47,20 @@ function normalizeRequest(item) {
   }
 }
 
+function normalizeRequestResponse(item) {
+  return {
+    ...item,
+    id: item.id,
+    donorId: item.donor_id,
+    donorName: item.donor_name || 'Donor',
+    donorBloodType: displayBlood(item.donor_blood_type || ''),
+    donorPhone: item.donor_phone || '',
+    status: (item.status || '').toLowerCase(),
+    distanceKm: item.distance_km,
+    respondedAt: item.responded_at,
+  }
+}
+
 function requestPayload(payload, user) {
   return {
     hospital_id: user?.id,
@@ -149,6 +163,14 @@ export const donorApi = {
       throw new Error(getApiError(error), { cause: error })
     }
   },
+  async recordDonation(payload) {
+    try {
+      const { data } = await api.post('/api/donors/donations/record/', payload)
+      return data
+    } catch (error) {
+      throw new Error(getApiError(error), { cause: error })
+    }
+  },
   async getScreeningCenters(params = {}) {
     try {
       const { data } = await api.get('/api/donors/screening-centers/', { params })
@@ -196,6 +218,14 @@ export const requestApi = {
     try {
       const { data } = await api.post(`/api/requests/${id}/respond/`, payload)
       return data
+    } catch (error) {
+      throw new Error(getApiError(error), { cause: error })
+    }
+  },
+  async responses(id) {
+    try {
+      const { data } = await api.get(`/api/requests/${id}/responses/`)
+      return data.map(normalizeRequestResponse)
     } catch (error) {
       throw new Error(getApiError(error), { cause: error })
     }
@@ -338,6 +368,14 @@ export const campaignApi = {
   async withdrawInterest(id) {
     try {
       const { data } = await api.delete(`/api/campaigns/${id}/interest/`)
+      return data
+    } catch (error) {
+      throw new Error(getApiError(error), { cause: error })
+    }
+  },
+  async interests(id) {
+    try {
+      const { data } = await api.get(`/api/campaigns/${id}/interests/`)
       return data
     } catch (error) {
       throw new Error(getApiError(error), { cause: error })

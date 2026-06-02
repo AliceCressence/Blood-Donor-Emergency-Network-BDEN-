@@ -4,6 +4,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { AlertTriangle, Award, Building2, CalendarDays, ChevronLeft, ChevronRight, Clock, ExternalLink, HeartPulse, LayoutList, LocateFixed, Map, MapPin, Navigation, Target, Users, X } from 'lucide-react'
 import { useOutletContext } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
 import { campaignApi, donorApi, requestApi } from '../../services/app.service'
 
 const YAOUNDE_CENTER = [3.8667, 11.5167]
@@ -13,6 +14,29 @@ const FILTERS = [
   { id: 'campaign', label: 'Campaigns', icon: CalendarDays, activeClass: 'bg-blue-600 text-white' },
   { id: 'facility', label: 'Screening centers', icon: Building2, activeClass: 'bg-emerald-600 text-white' },
 ]
+
+const DONOR_COMPATIBILITY = {
+  'O-': ['O-', 'O+', 'A-', 'A+', 'B-', 'B+', 'AB-', 'AB+'],
+  'O+': ['O+', 'A+', 'B+', 'AB+'],
+  'A-': ['A-', 'A+', 'AB-', 'AB+'],
+  'A+': ['A+', 'AB+'],
+  'B-': ['B-', 'B+', 'AB-', 'AB+'],
+  'B+': ['B+', 'AB+'],
+  'AB-': ['AB-', 'AB+'],
+  'AB+': ['AB+'],
+}
+
+const normalizeBloodType = value => String(value || '').replace('−', '-').toUpperCase()
+const displayBloodType = value => normalizeBloodType(value).replace('-', '−')
+const isUnsetBloodType = value => {
+  const normalized = normalizeBloodType(value)
+  return !normalized || normalized === 'UNKNOWN' || normalized === 'UNSET'
+}
+const canDonateTo = (donorBloodType, recipientBloodType) => {
+  const donor = normalizeBloodType(donorBloodType)
+  const recipient = normalizeBloodType(recipientBloodType)
+  return Boolean(DONOR_COMPATIBILITY[donor]?.includes(recipient))
+}
 
 function markerIcon(type) {
   const color = { emergency: '#dc2626', campaign: '#2563eb', facility: '#059669', user: '#2563eb' }[type] || '#111827'
@@ -84,7 +108,7 @@ function LocationCard({ loc, selected, onClick }) {
   )
 }
 
-function DetailDrawer({ item, onClose }) {
+function DetailDrawer({ item, onClose, onRequestRespond, onCampaignInterest, actionState, donorBloodType }) {
   if (!item) return null
   const isEmergency = item.type === 'emergency'
   const isCampaign = item.type === 'campaign'
@@ -96,6 +120,13 @@ function DetailDrawer({ item, onClose }) {
   const startsAt = item.startDate ? new Date(item.startDate) : null
   const endsAt = item.endDate ? new Date(item.endDate) : null
   const facilityName = item.facilityName || item.hospitalName || item.hospital || (isCampaign ? item.hospital : '') || item.name
+  const donorBloodUnset = isUnsetBloodType(donorBloodType)
+  const requestCompatible = isEmergency && !donorBloodUnset ? canDonateTo(donorBloodType, item.bloodType) : false
+  const compatibilityLabel = donorBloodUnset
+    ? 'Your blood type is not set yet.'
+    : requestCompatible
+      ? `${displayBloodType(donorBloodType)} can donate to ${item.bloodType}.`
+      : `${displayBloodType(donorBloodType)} cannot usually donate to ${item.bloodType}.`
   return (
     <div className="fixed inset-0 z-[1300] flex justify-end">
       <button className="absolute inset-0 bg-black/45 backdrop-blur-sm" onClick={onClose} aria-label="Close details" />
@@ -125,6 +156,40 @@ function DetailDrawer({ item, onClose }) {
 
           {isEmergency && (
             <>
+              <section className={`rounded-2xl border p-4 ${requestCompatible ? 'border-red-100 bg-red-50' : donorBloodUnset ? 'border-amber-100 bg-amber-50' : 'border-warm-200 bg-warm-50'}`}>
+                <p className={`font-display text-lg font-bold ${requestCompatible ? 'text-red-900' : donorBloodUnset ? 'text-amber-900' : 'text-warm-950'}`}>
+                  {donorBloodUnset ? 'Feel like you can donate?' : requestCompatible ? 'You can help with this request' : 'This request is not compatible with your blood type'}
+                </p>
+                <p className={`mt-1 text-sm leading-relaxed ${requestCompatible ? 'text-red-700' : donorBloodUnset ? 'text-amber-700' : 'text-warm-600'}`}>
+                  {donorBloodUnset
+                    ? 'You can tell the facility you are willing, but they must screen your blood type and eligibility before any sample is taken.'
+                    : requestCompatible
+                      ? 'Your registered blood type matches this request. Tell the facility if you can come, and they will verify you before recording a donation.'
+                      : 'For your safety and the patient’s safety, BDEN will not let you opt in for this request. You can still use directions or look for a compatible need nearby.'}
+                </p>
+                <p className={`mt-3 rounded-xl px-3 py-2 text-xs font-bold ${requestCompatible ? 'bg-white/80 text-red-700' : donorBloodUnset ? 'bg-white/80 text-amber-700' : 'bg-white text-warm-600'}`}>
+                  {compatibilityLabel}
+                </p>
+                {(requestCompatible || donorBloodUnset) ? (
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                    <button
+                      onClick={() => onRequestRespond(item, 'ACCEPTED')}
+                      disabled={actionState.loading}
+                      className={`rounded-2xl px-4 py-3 text-sm font-bold text-white shadow-lg transition-transform hover:-translate-y-0.5 disabled:opacity-50 ${donorBloodUnset ? 'bg-amber-600 shadow-amber-600/20' : 'bg-red-600 shadow-red-600/20'}`}
+                    >
+                      {donorBloodUnset ? 'I am willing after screening' : 'I can donate'}
+                    </button>
+                    <button
+                      onClick={() => onRequestRespond(item, 'DECLINED')}
+                      disabled={actionState.loading}
+                      className={`rounded-2xl border bg-white px-4 py-3 text-sm font-bold transition-colors disabled:opacity-50 ${donorBloodUnset ? 'border-amber-200 text-amber-700 hover:bg-amber-50' : 'border-red-200 text-red-700 hover:bg-red-50'}`}
+                    >
+                      I cannot help now
+                    </button>
+                  </div>
+                ) : null}
+                {actionState.message && <p className="mt-3 text-xs font-semibold text-red-700">{actionState.message}</p>}
+              </section>
               <section className="grid gap-3 sm:grid-cols-3">
                 {[
                   { icon: HeartPulse, label: 'Blood type', value: item.bloodType },
@@ -156,6 +221,18 @@ function DetailDrawer({ item, onClose }) {
 
           {isCampaign && (
             <>
+              <section className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                <p className="font-display text-lg font-bold text-blue-950">Interested in joining this campaign?</p>
+                <p className="mt-1 text-sm leading-relaxed text-blue-700">Your interest helps the facility estimate turnout and prepare the donation day. They will still verify the donation in person.</p>
+                <button
+                  onClick={() => onCampaignInterest(item)}
+                  disabled={actionState.loading}
+                  className="mt-4 w-full rounded-2xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition-transform hover:-translate-y-0.5 disabled:opacity-50"
+                >
+                  I am interested
+                </button>
+                {actionState.message && <p className="mt-3 text-xs font-semibold text-blue-700">{actionState.message}</p>}
+              </section>
               <section className="rounded-[24px] border border-blue-100 bg-blue-50 p-5">
                 <div className="flex items-center justify-between gap-3">
                   <div>
@@ -304,6 +381,7 @@ function ListNeedCard({ loc, onClick }) {
 
 export default function MapView() {
   const { collapsed = false } = useOutletContext() || {}
+  const { user } = useAuth()
   const [filter, setFilter] = useState('all')
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('bden_nearby_view') || 'map')
   const [selected, setSelected] = useState(null)
@@ -313,7 +391,9 @@ export default function MapView() {
   const [userLocation, setUserLocation] = useState(null)
   const [flyHome, setFlyHome] = useState(0)
   const [distanceFromHome, setDistanceFromHome] = useState(0)
+  const [actionState, setActionState] = useState({ loading: false, message: '' })
   const scrollRef = useRef(null)
+  const donorBloodType = user?.bloodType || user?.blood_type || ''
 
   useEffect(() => {
     requestApi.list({ status: 'ACTIVE' }).then(setRequests).catch(() => setRequests([]))
@@ -352,10 +432,56 @@ export default function MapView() {
   const home = userLocation || YAOUNDE_CENTER
 
   const scrollCards = dir => scrollRef.current?.scrollBy({ left: dir * 240, behavior: 'smooth' })
+  const selectLocation = loc => {
+    setActionState({ loading: false, message: '' })
+    setSelected(loc)
+  }
   const grouped = {
     emergency: visible.filter(item => item.type === 'emergency'),
     campaign: visible.filter(item => item.type === 'campaign'),
     facility: visible.filter(item => item.type === 'facility'),
+  }
+
+  const respondToRequest = async (item, status) => {
+    if (!user?.id) {
+      setActionState({ loading: false, message: 'Please sign in again so we can attach this response to your donor profile.' })
+      return
+    }
+    if (status === 'ACCEPTED' && !isUnsetBloodType(donorBloodType) && !canDonateTo(donorBloodType, item.bloodType)) {
+      setActionState({ loading: false, message: `${displayBloodType(donorBloodType)} cannot usually donate to ${item.bloodType}. For safety, please choose a compatible request instead.` })
+      return
+    }
+    setActionState({ loading: true, message: '' })
+    try {
+      await requestApi.respond(item.id, {
+        donor_id: user.id,
+        status,
+        name: user.name || [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email || 'Donor',
+        blood_type: normalizeBloodType(donorBloodType),
+        phone: user.phone || '',
+      })
+      const message = status === 'ACCEPTED'
+        ? 'Thanks. The facility can now see that you can help.'
+        : 'No worries. We told the facility you cannot help this time.'
+      setActionState({ loading: false, message })
+      setRequests(current => current.map(request => request.id === item.id ? { ...request, donors: status === 'ACCEPTED' ? (request.donors || 0) + 1 : request.donors } : request))
+    } catch (err) {
+      setActionState({ loading: false, message: err.message })
+    }
+  }
+
+  const registerCampaignInterest = async (item) => {
+    setActionState({ loading: true, message: '' })
+    try {
+      const result = await campaignApi.interest(item.id)
+      const interestedCount = result.interested_count ?? item.interestedCount
+      const message = result.created ? 'Lovely. The organizer can now see your interest.' : 'You are already marked as interested for this campaign.'
+      setActionState({ loading: false, message })
+      setCampaigns(current => current.map(campaign => campaign.id === item.id ? { ...campaign, interestedCount } : campaign))
+      setSelected(current => current?.id === item.id ? { ...current, interestedCount } : current)
+    } catch (err) {
+      setActionState({ loading: false, message: err.message })
+    }
   }
 
   if (viewMode === 'list') {
@@ -406,7 +532,7 @@ export default function MapView() {
                       <div className="rounded-2xl border border-dashed border-warm-200 bg-white/70 p-5 text-sm text-warm-400">Nothing in this group yet.</div>
                     ) : (
                       <div className="space-y-3">
-                        {grouped[key].map(loc => <ListNeedCard key={`${loc.type}-list-${loc.id}`} loc={loc} onClick={() => setSelected(loc)} />)}
+                        {grouped[key].map(loc => <ListNeedCard key={`${loc.type}-list-${loc.id}`} loc={loc} onClick={() => selectLocation(loc)} />)}
                       </div>
                     )}
                   </section>
@@ -415,7 +541,7 @@ export default function MapView() {
             )}
           </div>
         </div>
-        <DetailDrawer item={selected} onClose={() => setSelected(null)} />
+        <DetailDrawer item={selected} onClose={() => setSelected(null)} onRequestRespond={respondToRequest} onCampaignInterest={registerCampaignInterest} actionState={actionState} donorBloodType={donorBloodType} />
       </>
     )
   }
@@ -434,7 +560,7 @@ export default function MapView() {
         )}
 
         {viewMode === 'map' && visible.map(loc => (
-          <Marker key={`${loc.type}-${loc.id}`} position={loc.position} icon={markerIcon(loc.type)} eventHandlers={{ click: () => setSelected(loc) }}>
+          <Marker key={`${loc.type}-${loc.id}`} position={loc.position} icon={markerIcon(loc.type)} eventHandlers={{ click: () => selectLocation(loc) }}>
             <Popup>
               <div className="min-w-[180px]">
                 <p className="font-bold text-sm text-neutral-900 mb-1">{loc.name}</p>
@@ -507,14 +633,14 @@ export default function MapView() {
           <div className="relative w-full">
             <button onClick={() => scrollCards(-1)} className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 z-10 w-7 h-7 bg-white rounded-full shadow-md border border-neutral-200 flex items-center justify-center text-neutral-500 hover:text-neutral-800"><ChevronLeft size={14} /></button>
             <div ref={scrollRef} className="flex gap-3 overflow-x-auto pl-4 pr-10" style={{ scrollSnapType: 'x mandatory' }}>
-              {visible.map(loc => <div key={`${loc.type}-card-${loc.id}`} style={{ scrollSnapAlign: 'start' }}><LocationCard loc={loc} selected={selected?.id === loc.id} onClick={() => setSelected(loc)} /></div>)}
+              {visible.map(loc => <div key={`${loc.type}-card-${loc.id}`} style={{ scrollSnapAlign: 'start' }}><LocationCard loc={loc} selected={selected?.id === loc.id} onClick={() => selectLocation(loc)} /></div>)}
             </div>
             <button onClick={() => scrollCards(1)} className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-3 z-10 w-7 h-7 bg-white rounded-full shadow-md border border-neutral-200 flex items-center justify-center text-neutral-500 hover:text-neutral-800"><ChevronRight size={14} /></button>
           </div>
         ) : (
           <div className="mx-auto max-h-[58vh] max-w-3xl overflow-y-auto rounded-[24px] border border-white/70 bg-white/95 p-3 shadow-2xl backdrop-blur-xl">
             <div className="grid gap-2 sm:grid-cols-2">
-              {visible.map(loc => <LocationCard key={`${loc.type}-list-${loc.id}`} loc={loc} selected={selected?.id === loc.id} onClick={() => setSelected(loc)} />)}
+              {visible.map(loc => <LocationCard key={`${loc.type}-list-${loc.id}`} loc={loc} selected={selected?.id === loc.id} onClick={() => selectLocation(loc)} />)}
             </div>
           </div>
         )}
@@ -525,7 +651,7 @@ export default function MapView() {
   return (
     <>
       {content}
-      <DetailDrawer item={selected} onClose={() => setSelected(null)} />
+      <DetailDrawer item={selected} onClose={() => setSelected(null)} onRequestRespond={respondToRequest} onCampaignInterest={registerCampaignInterest} actionState={actionState} donorBloodType={donorBloodType} />
     </>
   )
 }

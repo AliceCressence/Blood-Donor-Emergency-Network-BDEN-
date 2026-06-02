@@ -6,6 +6,7 @@ from .views import (
     CampaignDetailView,
     CampaignEditView,
     CampaignInterestView,
+    CampaignInterestsListView,
     CampaignListCreateView,
     CampaignProgressView,
     CampaignReviewView,
@@ -26,4 +27,5 @@ urlpatterns = [
     path("<uuid:pk>/progress/", CampaignProgressView.as_view(), name="campaign-progress"),
     path("<uuid:pk>/cancel/", CampaignCancelView.as_view(), name="campaign-cancel"),
     path("<uuid:pk>/interest/", CampaignInterestView.as_view(), name="campaign-interest"),
+    path("<uuid:pk>/interests/", CampaignInterestsListView.as_view(), name="campaign-interests"),
 ]

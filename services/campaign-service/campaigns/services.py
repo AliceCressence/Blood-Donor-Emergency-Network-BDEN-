@@ -50,6 +50,7 @@ class CampaignService:
         if created:
             DonationCampaign.objects.filter(id=campaign.id).update(interested_count=F("interested_count") + 1)
             campaign.refresh_from_db(fields=["interested_count"])
+            publish_event("DONOR_INTERESTED_CAMPAIGN", {**self._event_payload(campaign), "donor_id": str(donor_user_id)})
         return interest, created
 
     def withdraw_interest(self, campaign, donor_user_id):
