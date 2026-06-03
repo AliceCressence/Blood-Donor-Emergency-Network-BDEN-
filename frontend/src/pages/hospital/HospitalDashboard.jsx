@@ -11,11 +11,15 @@ import { campaignApi, requestApi } from '../../services/app.service'
 import { CardShimmer, EmptyState } from '../../components/shared/DataStates'
 
 const STATUS_STYLES = {
-  active:    { bg: 'bg-blood-50',  text: 'text-blood-700',  border: 'border-blood-200',  dot: 'bg-blood-500 animate-pulse', label: 'Active'    },
-  matched:   { bg: 'bg-amber-50',  text: 'text-amber-700',  border: 'border-amber-200',  dot: 'bg-amber-500',               label: 'Matched'   },
-  fulfilled: { bg: 'bg-teal-50',   text: 'text-teal-700',   border: 'border-teal-200',   dot: 'bg-teal-500',                label: 'Fulfilled' },
-  expired:   { bg: 'bg-warm-100',  text: 'text-warm-500',   border: 'border-warm-200',   dot: 'bg-warm-400',                label: 'Expired'   },
+  active:              { bg: 'bg-blood-50', text: 'text-blood-700', border: 'border-blood-200', dot: 'bg-blood-500 animate-pulse', label: 'Active' },
+  open:                { bg: 'bg-blood-50', text: 'text-blood-700', border: 'border-blood-200', dot: 'bg-blood-500 animate-pulse', label: 'Open' },
+  partially_fulfilled: { bg: 'bg-blue-50',  text: 'text-blue-700',  border: 'border-blue-200',  dot: 'bg-blue-500',                label: 'Partially matched' },
+  matched:             { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', dot: 'bg-amber-500',               label: 'Matched' },
+  fulfilled:           { bg: 'bg-teal-50',  text: 'text-teal-700',  border: 'border-teal-200',  dot: 'bg-teal-500',                label: 'Fulfilled' },
+  expired:             { bg: 'bg-warm-100', text: 'text-warm-500',  border: 'border-warm-200',  dot: 'bg-warm-400',                label: 'Expired' },
+  cancelled:           { bg: 'bg-red-50',   text: 'text-red-700',   border: 'border-red-200',   dot: 'bg-red-500',                 label: 'Cancelled' },
 }
+const DEFAULT_STATUS_STYLE = { bg: 'bg-warm-100', text: 'text-warm-600', border: 'border-warm-200', dot: 'bg-warm-400', label: 'Updated' }
 
 function StatCard({ icon: Icon, label, value, sub, color }) {
   const colors = {
@@ -112,7 +116,7 @@ export default function HospitalDashboard() {
               </div>
             )}
             {!loadingRequests && requests.map((r) => {
-              const s = STATUS_STYLES[r.status]
+              const s = STATUS_STYLES[r.status] || { ...DEFAULT_STATUS_STYLE, label: r.status?.replaceAll('_', ' ') || DEFAULT_STATUS_STYLE.label }
               return (
                 <div key={r.id} className="flex items-center gap-4 px-6 py-4">
                   <div className="w-10 h-10 rounded-xl bg-blood-50 border border-blood-100

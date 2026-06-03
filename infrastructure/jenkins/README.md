@@ -12,4 +12,6 @@ Open `http://localhost:8081`, unlock Jenkins with the initial admin password fro
 https://github.com/AliceCressence/Blood-Donor-Emergency-Network-BDEN-.git
 ```
 
-The root `Jenkinsfile` performs checkout, Django syntax checks, auth/donor service tests, frontend build, and Docker Compose validation. Deployment is present only as a disabled placeholder until the VPS target exists.
+The root `Jenkinsfile` performs checkout, Compose validation, Django checks/tests for all services, frontend lint/build, production image build, and production deployment from `main` when `DEPLOY_PROD` is enabled.
+
+For local Jenkins experiments, leave `DEPLOY_PROD` disabled unless you deliberately created a local `.env.prod` and want to test the production Compose stack.

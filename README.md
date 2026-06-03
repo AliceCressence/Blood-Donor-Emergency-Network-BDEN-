@@ -42,6 +42,25 @@ The gateway listens on `http://localhost:8000`.
 
 Opening `http://localhost:8000/` returns a small JSON gateway index. The backend itself is API-first, so most useful routes are under `/api/...`, `/health/...`, and `/django-admin/...`.
 
+## Production Compose
+
+Use a separate production Compose file. The local file is intentionally dev-friendly; the production file keeps databases private and exposes only loopback ports for host Nginx.
+
+```bash
+cp .env.prod.example .env.prod
+# edit .env.prod with real secrets and production URLs
+docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod up -d --build
+```
+
+Production ports on the VPS:
+
+```text
+127.0.0.1:8088  frontend
+127.0.0.1:8080  backend gateway
+```
+
+Jenkins deploys the production stack from `main` when `DEPLOY_PROD` is enabled and `.env.prod` exists in the workspace.
+
 Useful health checks:
 
 ```bash
