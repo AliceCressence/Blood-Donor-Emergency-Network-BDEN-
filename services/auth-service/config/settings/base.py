@@ -10,7 +10,7 @@ REPO_ROOT = BASE_DIR.parent.parent
 load_dotenv(REPO_ROOT / ".env")
 load_dotenv(BASE_DIR / ".env")
 
-SECRET_KEY = os.environ.get("AUTH_SECRET_KEY", "unsafe-auth-dev-key")
+SECRET_KEY = os.environ.get("AUTH_SECRET_KEY", "unsafe-auth-dev-key-at-least-32-bytes")
 DEBUG = os.environ.get("DEBUG", "False") == "True"
 ALLOWED_HOSTS = [host.strip() for host in os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if host.strip()]
 
