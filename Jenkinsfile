@@ -135,12 +135,36 @@ pipeline {
                 sh 'docker compose --env-file ${RESOLVED_PROD_ENV_FILE} -f docker-compose.prod.yml -p ${PROD_PROJECT} config --quiet'
                 sh 'docker compose --env-file ${RESOLVED_PROD_ENV_FILE} -f docker-compose.prod.yml -p ${PROD_PROJECT} build'
                 sh 'docker compose --env-file ${RESOLVED_PROD_ENV_FILE} -f docker-compose.prod.yml -p ${PROD_PROJECT} up -d --remove-orphans'
-                sh 'curl -fsS http://127.0.0.1:${BDEN_FRONTEND_HOST_PORT}/health/'
-                sh 'curl -fsS http://127.0.0.1:${BDEN_GATEWAY_HOST_PORT}/health/auth/'
-                sh 'curl -fsS http://127.0.0.1:${BDEN_GATEWAY_HOST_PORT}/health/donor/'
-                sh 'curl -fsS http://127.0.0.1:${BDEN_GATEWAY_HOST_PORT}/health/request/'
-                sh 'curl -fsS http://127.0.0.1:${BDEN_GATEWAY_HOST_PORT}/health/campaign/'
-                sh 'curl -fsS http://127.0.0.1:${BDEN_GATEWAY_HOST_PORT}/health/notification/'
+                sh '''
+                    set -eu
+
+                    check_url() {
+                        name="$1"
+                        url="$2"
+
+                        for attempt in $(seq 1 30); do
+                            if curl -fsS --max-time 5 "$url"; then
+                                echo "${name} health check passed"
+                                return 0
+                            fi
+
+                            echo "Waiting for ${name} health check (${attempt}/30): ${url}"
+                            sleep 5
+                        done
+
+                        echo "ERROR: ${name} health check failed after retries: ${url}" >&2
+                        docker compose --env-file "${RESOLVED_PROD_ENV_FILE}" -f docker-compose.prod.yml -p "${PROD_PROJECT}" ps
+                        docker compose --env-file "${RESOLVED_PROD_ENV_FILE}" -f docker-compose.prod.yml -p "${PROD_PROJECT}" logs --tail=120
+                        exit 1
+                    }
+
+                    check_url frontend "http://127.0.0.1:${BDEN_FRONTEND_HOST_PORT}/health/"
+                    check_url auth "http://127.0.0.1:${BDEN_GATEWAY_HOST_PORT}/health/auth/"
+                    check_url donor "http://127.0.0.1:${BDEN_GATEWAY_HOST_PORT}/health/donor/"
+                    check_url request "http://127.0.0.1:${BDEN_GATEWAY_HOST_PORT}/health/request/"
+                    check_url campaign "http://127.0.0.1:${BDEN_GATEWAY_HOST_PORT}/health/campaign/"
+                    check_url notification "http://127.0.0.1:${BDEN_GATEWAY_HOST_PORT}/health/notification/"
+                '''
             }
         }
     }
