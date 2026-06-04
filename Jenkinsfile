@@ -52,7 +52,7 @@ pipeline {
 
         stage('Docker Network Preflight') {
             steps {
-                sh 'docker run --rm python:3.11-slim-bookworm python -c "import socket; print(socket.gethostbyname(\\\"pypi.org\\\"))"'
+                sh 'docker run --rm --network host python:3.11-slim-bookworm python -c "import socket; print(socket.gethostbyname(\\\"pypi.org\\\"))"'
             }
         }
 
