@@ -2,6 +2,7 @@ services:
   frontend:
     build:
       context: ./frontend
+      network: ${BDEN_BUILD_NETWORK:-default}
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://bden.hinkaku.tech}
     restart: unless-stopped
@@ -83,6 +84,7 @@ services:
   auth-service:
     build:
       context: ./services/auth-service
+      network: ${BDEN_BUILD_NETWORK:-default}
     restart: unless-stopped
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.prod
@@ -117,6 +119,7 @@ services:
   donor-service:
     build:
       context: ./services/donor-service
+      network: ${BDEN_BUILD_NETWORK:-default}
     restart: unless-stopped
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.prod
@@ -153,6 +156,7 @@ services:
   donor-event-consumer:
     build:
       context: ./services/donor-service
+      network: ${BDEN_BUILD_NETWORK:-default}
     restart: unless-stopped
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.prod
@@ -178,6 +182,7 @@ services:
   request-service:
     build:
       context: ./services/request-service
+      network: ${BDEN_BUILD_NETWORK:-default}
     restart: unless-stopped
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.prod
@@ -208,6 +213,7 @@ services:
   request-event-consumer:
     build:
       context: ./services/request-service
+      network: ${BDEN_BUILD_NETWORK:-default}
     restart: unless-stopped
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.prod
@@ -232,6 +238,7 @@ services:
   campaign-service:
     build:
       context: ./services/campaign-service
+      network: ${BDEN_BUILD_NETWORK:-default}
     restart: unless-stopped
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.prod
@@ -262,6 +269,7 @@ services:
   notification-service:
     build:
       context: ./services/notification-service
+      network: ${BDEN_BUILD_NETWORK:-default}
     restart: unless-stopped
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.prod
@@ -290,6 +298,7 @@ services:
   notification-event-consumer:
     build:
       context: ./services/notification-service
+      network: ${BDEN_BUILD_NETWORK:-default}
     restart: unless-stopped
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.prod
@@ -314,6 +323,7 @@ services:
   gateway:
     build:
       context: ./infrastructure/nginx
+      network: ${BDEN_BUILD_NETWORK:-default}
     restart: unless-stopped
     ports:
       - "127.0.0.1:${BDEN_GATEWAY_HOST_PORT:-8080}:80"
