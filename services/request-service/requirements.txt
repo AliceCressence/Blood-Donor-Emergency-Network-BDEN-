@@ -12,3 +12,6 @@ requests==2.31.0
 celery==5.4.0
 gunicorn==21.2.0
 whitenoise==6.12.0
+pytest==8.2.2
+pytest-django==4.8.0
+pytest-cov==5.0.0

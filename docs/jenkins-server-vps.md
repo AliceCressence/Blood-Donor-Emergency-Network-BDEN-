@@ -130,6 +130,46 @@ The root `Jenkinsfile` deploys production only when:
 
 A registry is optional for the current single-VPS Compose deployment because Jenkins builds images directly on the VPS. When moving to K3s, add registry credentials in Jenkins and extend the Jenkinsfile with image push stages for each service.
 
+## Troubleshooting Docker Build DNS
+
+If Jenkins fails while building a service image with messages like:
+
+```text
+Temporary failure resolving 'deb.debian.org'
+E: Unable to locate package build-essential
+```
+
+the failure happened before Django tests started. Docker could not resolve Debian package repositories during `apt-get update`.
+
+Check DNS from the VPS:
+
+```bash
+getent hosts deb.debian.org
+curl -I https://deb.debian.org
+docker run --rm python:3.11-slim-bookworm getent hosts deb.debian.org
+```
+
+If host DNS works but Docker DNS fails, configure Docker daemon DNS:
+
+```bash
+sudo mkdir -p /etc/docker
+sudo tee /etc/docker/daemon.json >/dev/null <<'EOF'
+{
+  "dns": ["1.1.1.1", "8.8.8.8"]
+}
+EOF
+
+sudo systemctl restart docker
+sudo systemctl restart jenkins
+```
+
+Then retry:
+
+```bash
+cd /var/www/bden
+docker compose --env-file .env.example -p bden-ci build request-service
+```
+
 ## Future K3s Deployment
 
 The planned target is a `bden-prod` K3s namespace. Future deployment stages should:
