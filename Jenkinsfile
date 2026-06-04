@@ -115,10 +115,26 @@ pipeline {
                 }
             }
             steps {
-                sh 'test -f ${PROD_ENV_FILE}'
-                sh 'docker compose --env-file ${PROD_ENV_FILE} -f docker-compose.prod.yml -p ${PROD_PROJECT} config --quiet'
-                sh 'docker compose --env-file ${PROD_ENV_FILE} -f docker-compose.prod.yml -p ${PROD_PROJECT} build'
-                sh 'docker compose --env-file ${PROD_ENV_FILE} -f docker-compose.prod.yml -p ${PROD_PROJECT} up -d --remove-orphans'
+                script {
+                    env.RESOLVED_PROD_ENV_FILE = sh(
+                        returnStdout: true,
+                        script: '''
+                            set -eu
+                            for candidate in "${PROD_ENV_FILE}" /var/www/bden/.env.prod; do
+                                if [ -f "$candidate" ]; then
+                                    printf '%s' "$candidate"
+                                    exit 0
+                                fi
+                            done
+                            echo "ERROR: missing production env file. Create .env.prod in the Jenkins workspace or /var/www/bden/.env.prod on the VPS." >&2
+                            exit 1
+                        '''
+                    ).trim()
+                    echo "Using production env file: ${env.RESOLVED_PROD_ENV_FILE}"
+                }
+                sh 'docker compose --env-file ${RESOLVED_PROD_ENV_FILE} -f docker-compose.prod.yml -p ${PROD_PROJECT} config --quiet'
+                sh 'docker compose --env-file ${RESOLVED_PROD_ENV_FILE} -f docker-compose.prod.yml -p ${PROD_PROJECT} build'
+                sh 'docker compose --env-file ${RESOLVED_PROD_ENV_FILE} -f docker-compose.prod.yml -p ${PROD_PROJECT} up -d --remove-orphans'
                 sh 'curl -fsS http://127.0.0.1:${BDEN_FRONTEND_HOST_PORT}/health/'
                 sh 'curl -fsS http://127.0.0.1:${BDEN_GATEWAY_HOST_PORT}/health/auth/'
                 sh 'curl -fsS http://127.0.0.1:${BDEN_GATEWAY_HOST_PORT}/health/donor/'
