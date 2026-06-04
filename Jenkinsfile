@@ -25,6 +25,7 @@ pipeline {
         BDEN_FRONTEND_HOST_PORT = '8088'
         VITE_API_BASE_URL = 'http://localhost:8000'
         PORT_PREFIX = '1'
+        BDEN_BUILD_NETWORK = 'host'
     }
 
     stages {

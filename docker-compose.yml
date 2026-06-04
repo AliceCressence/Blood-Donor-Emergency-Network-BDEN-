@@ -76,6 +76,7 @@ services:
   auth-service:
     build:
       context: ./services/auth-service
+      network: ${BDEN_BUILD_NETWORK:-default}
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.dev
       DEBUG: ${DEBUG:-True}
@@ -110,6 +111,7 @@ services:
   donor-service:
     build:
       context: ./services/donor-service
+      network: ${BDEN_BUILD_NETWORK:-default}
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.dev
       DEBUG: ${DEBUG:-True}
@@ -146,6 +148,7 @@ services:
   donor-event-consumer:
     build:
       context: ./services/donor-service
+      network: ${BDEN_BUILD_NETWORK:-default}
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.dev
       DEBUG: ${DEBUG:-True}
@@ -171,6 +174,7 @@ services:
   request-service:
     build:
       context: ./services/request-service
+      network: ${BDEN_BUILD_NETWORK:-default}
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.dev
       DEBUG: ${DEBUG:-True}
@@ -202,6 +206,7 @@ services:
   request-event-consumer:
     build:
       context: ./services/request-service
+      network: ${BDEN_BUILD_NETWORK:-default}
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.dev
       DEBUG: ${DEBUG:-True}
@@ -226,6 +231,7 @@ services:
   campaign-service:
     build:
       context: ./services/campaign-service
+      network: ${BDEN_BUILD_NETWORK:-default}
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.dev
       DEBUG: ${DEBUG:-True}
@@ -256,6 +262,7 @@ services:
   notification-service:
     build:
       context: ./services/notification-service
+      network: ${BDEN_BUILD_NETWORK:-default}
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.dev
       DEBUG: ${DEBUG:-True}
@@ -285,6 +292,7 @@ services:
   notification-event-consumer:
     build:
       context: ./services/notification-service
+      network: ${BDEN_BUILD_NETWORK:-default}
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.dev
       DEBUG: ${DEBUG:-True}
@@ -309,6 +317,7 @@ services:
   nginx:
     build:
       context: ./infrastructure/nginx
+      network: ${BDEN_BUILD_NETWORK:-default}
     ports:
       - "${PORT_PREFIX:-}8000:80"
     depends_on:
@@ -323,6 +332,7 @@ services:
   jenkins:
     build:
       context: ./infrastructure/jenkins
+      network: ${BDEN_BUILD_NETWORK:-default}
     container_name: bden-jenkins
     restart: unless-stopped
     user: root
