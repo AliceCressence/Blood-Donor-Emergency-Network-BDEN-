@@ -34,6 +34,13 @@ pipeline {
                 checkout scm
                 sh 'git remote -v'
                 sh 'git rev-parse --abbrev-ref HEAD'
+                script {
+                    env.IS_MAIN_BRANCH = sh(
+                        returnStdout: true,
+                        script: 'test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" && echo true || echo false'
+                    ).trim()
+                    echo "IS_MAIN_BRANCH=${env.IS_MAIN_BRANCH}"
+                }
             }
         }
 
@@ -91,7 +98,7 @@ pipeline {
         stage('Build Production Images') {
             when {
                 anyOf {
-                    branch 'main'
+                    expression { return env.IS_MAIN_BRANCH == 'true' }
                     changeRequest(target: 'main')
                 }
             }
@@ -103,7 +110,7 @@ pipeline {
         stage('Deploy Production') {
             when {
                 allOf {
-                    branch 'main'
+                    expression { return env.IS_MAIN_BRANCH == 'true' }
                     expression { return params.DEPLOY_PROD }
                 }
             }
