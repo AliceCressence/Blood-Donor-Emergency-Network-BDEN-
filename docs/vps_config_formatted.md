@@ -14,8 +14,8 @@ Starting from a fresh SSH connection, this guide walks you both through every st
 git push / PR merge to main
   → GitHub Webhook
   → Jenkins (native, port 8090)
-  → Build Docker images → Run tests → Push to Docker Hub
-  → Deploy to k3s (bden-prod namespace)
+  → Run checks/tests → Build frontend → Build Docker images on VPS
+  → Deploy Docker Compose production stack (bden-prod project)
   → Health check passes
 ```
 
@@ -46,7 +46,7 @@ git push / PR merge to main
 10. [Jenkins — Native Installation](#section-9--jenkins--native-installation)
 11. [GitHub Webhook](#section-10--github-webhook)
 12. [The Jenkinsfile](#section-11--the-jenkinsfile)
-13. [Docker Compose — Production Override](#section-12--docker-compose--production-override)
+13. [Docker Compose — Production Stack](#section-12--docker-compose--production-stack)
 14. [Prometheus and Grafana](#section-13--prometheus-and-grafana)
 15. [Ansible Playbooks](#section-14--ansible-playbooks)
 16. [Deploy Script](#section-15--deploy-script)
@@ -1162,348 +1162,262 @@ You should see a ping event with response code `200`.
 
 ## Section 11 — The Jenkinsfile
 
-This file lives in the **root of your repository** and defines the complete CI/CD pipeline. Commit and push it to `main`.
+The repository now contains a production-aware `Jenkinsfile`. It no longer treats Kubernetes as the active deployment target. Kubernetes/k3s remains the future orchestration path, but the current production pipeline deploys the working Docker Compose production stack directly on the VPS.
 
-**Pipeline stages in order:**
+### 11.1 — What the current Jenkinsfile does
 
-| # | Stage | Description |
-|---|-------|-------------|
-| 1 | Checkout | Clone the triggering commit |
-| 2 | Lint & Syntax | Python `py_compile` check on all services |
-| 3 | Test: Auth | `pytest` for auth-service |
-| 4 | Test: Donor | `pytest` for donor-service |
-| 5 | Build Frontend | `npm ci` + `vite build` |
-| 6 | Build Images | `docker build` all 5 services in parallel |
-| 7 | Push Images | Push to Docker Hub *(main branch only)* |
-| 8 | Deploy to k3s | `kubectl apply` + rollout *(main branch only)* |
-| 9 | Health Check | `curl /health/` on the gateway *(main branch only)* |
+The pipeline has two separate paths:
 
-Save this as `Jenkinsfile` in the repo root:
+| Path | Runs on | Compose file | Env file | Purpose |
+|------|---------|--------------|----------|---------|
+| CI | branches and PRs | `docker-compose.yml` | `.env.example` | checks, tests, frontend build |
+| Production | `main` only | `docker-compose.prod.yml` | `.env.prod` | build and deploy VPS stack |
 
-```groovy
-pipeline {
-    agent any
+Pipeline stages in order:
 
-    environment {
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
-        DOCKERHUB_REPO        = 'your-dockerhub-username'
-        KUBECONFIG            = credentials('kubeconfig')
-        K8S_NAMESPACE         = 'bden-prod'
-        COMPOSE_FILE          = 'docker-compose.yml'
-    }
+| # | Stage | What it does |
+|---|-------|--------------|
+| 1 | Checkout | Checks out the GitHub repo and prints branch/remote info |
+| 2 | Compose Validation | Validates local and production Compose configs |
+| 3 | Backend Syntax Checks | Runs `python3 -m compileall` on all Django services |
+| 4 | Django Checks | Runs `python manage.py check` for all services |
+| 5 | Django Tests | Runs `pytest` for auth, donor, request, campaign, and notification services |
+| 6 | Frontend Build | Runs `npm install`, `npm run lint`, and `npm run build` |
+| 7 | Build Production Images | Builds prod images on `main` and PRs targeting `main` |
+| 8 | Deploy Production | Runs only on `main` when `DEPLOY_PROD=true` |
 
-    options {
-        ansiColor('xterm')
-        timestamps()
-        timeout(time: 30, unit: 'MINUTES')
-        buildDiscarder(logRotator(numToKeepStr: '10'))
-    }
+The deploy stage:
 
-    stages {
+1. verifies `.env.prod` exists;
+2. validates `docker-compose.prod.yml` with `.env.prod`;
+3. builds production images;
+4. starts the stack with `docker compose up -d --remove-orphans`;
+5. checks frontend and backend health endpoints.
 
-        stage('Checkout') {
-            steps {
-                checkout scm
-                sh 'echo "Building commit: $(git rev-parse --short HEAD)"'
-                sh 'echo "Branch: $GIT_BRANCH"'
-            }
-        }
+The Jenkins cleanup step only stops the CI Compose project, `bden-ci`. It does **not** stop the production project, `bden-prod`.
 
-        stage('Lint & Syntax Check') {
-            steps {
-                sh '''
-                    echo "=== Python syntax checks ==="
-                    find services/ -name "*.py" | xargs python3 -m py_compile
-                    echo "All Python files passed syntax check."
-                '''
-            }
-        }
+### 11.2 — Required Jenkins job parameter
 
-        stage('Test: Auth Service') {
-            steps {
-                sh '''
-                    docker compose -f ${COMPOSE_FILE} run --rm \
-                      -e DJANGO_SETTINGS_MODULE=config.settings.local \
-                      auth-service \
-                      pytest --tb=short --cov=. --cov-report=term-missing
-                '''
-            }
-            post {
-                always {
-                    sh 'docker compose -f ${COMPOSE_FILE} rm -f auth-service || true'
-                }
-            }
-        }
+Create or confirm this Jenkins build parameter:
 
-        stage('Test: Donor Service') {
-            steps {
-                sh '''
-                    docker compose -f ${COMPOSE_FILE} run --rm \
-                      -e DJANGO_SETTINGS_MODULE=config.settings.local \
-                      donor-service \
-                      pytest --tb=short --cov=. --cov-report=term-missing
-                '''
-            }
-            post {
-                always {
-                    sh 'docker compose -f ${COMPOSE_FILE} rm -f donor-service || true'
-                }
-            }
-        }
+| Name | Type | Default | Meaning |
+|------|------|---------|---------|
+| `DEPLOY_PROD` | Boolean | `true` | Allows deployment when the build runs on `main` |
 
-        stage('Build Frontend') {
-            steps {
-                sh '''
-                    cd frontend
-                    npm ci
-                    npm run build
-                    echo "Frontend build complete. dist/ size:"
-                    du -sh dist/
-                '''
-            }
-        }
+For local Jenkins experiments, set `DEPLOY_PROD=false` unless you deliberately want to test production Compose locally.
 
-        stage('Build Docker Images') {
-            parallel {
-                stage('auth-service') {
-                    steps {
-                        sh 'docker build -t ${DOCKERHUB_REPO}/bden-auth:${BUILD_NUMBER} services/auth-service'
-                        sh 'docker tag ${DOCKERHUB_REPO}/bden-auth:${BUILD_NUMBER} ${DOCKERHUB_REPO}/bden-auth:latest'
-                    }
-                }
-                stage('donor-service') {
-                    steps {
-                        sh 'docker build -t ${DOCKERHUB_REPO}/bden-donor:${BUILD_NUMBER} services/donor-service'
-                        sh 'docker tag ${DOCKERHUB_REPO}/bden-donor:${BUILD_NUMBER} ${DOCKERHUB_REPO}/bden-donor:latest'
-                    }
-                }
-                stage('request-service') {
-                    steps {
-                        sh 'docker build -t ${DOCKERHUB_REPO}/bden-request:${BUILD_NUMBER} services/request-service'
-                        sh 'docker tag ${DOCKERHUB_REPO}/bden-request:${BUILD_NUMBER} ${DOCKERHUB_REPO}/bden-request:latest'
-                    }
-                }
-                stage('campaign-service') {
-                    steps {
-                        sh 'docker build -t ${DOCKERHUB_REPO}/bden-campaign:${BUILD_NUMBER} services/campaign-service'
-                        sh 'docker tag ${DOCKERHUB_REPO}/bden-campaign:${BUILD_NUMBER} ${DOCKERHUB_REPO}/bden-campaign:latest'
-                    }
-                }
-                stage('notification-service') {
-                    steps {
-                        sh 'docker build -t ${DOCKERHUB_REPO}/bden-notification:${BUILD_NUMBER} services/notification-service'
-                        sh 'docker tag ${DOCKERHUB_REPO}/bden-notification:${BUILD_NUMBER} ${DOCKERHUB_REPO}/bden-notification:latest'
-                    }
-                }
-            }
-        }
+### 11.3 — Required `.env.prod` file
 
-        stage('Push Images to Docker Hub') {
-            when { branch 'main' }
-            steps {
-                sh 'echo ${DOCKERHUB_CREDENTIALS_PSW} | docker login -u ${DOCKERHUB_CREDENTIALS_USR} --password-stdin'
-                sh '''
-                    for svc in auth donor request campaign notification; do
-                        docker push ${DOCKERHUB_REPO}/bden-${svc}:${BUILD_NUMBER}
-                        docker push ${DOCKERHUB_REPO}/bden-${svc}:latest
-                    done
-                '''
-            }
-            post {
-                always { sh 'docker logout || true' }
-            }
-        }
+Jenkins needs a real `.env.prod` file in the job workspace before production deploy can run.
 
-        stage('Deploy to k3s') {
-            when { branch 'main' }
-            steps {
-                sh '''
-                    export KUBECONFIG=${KUBECONFIG}
-                    sed -i "s|:latest|:${BUILD_NUMBER}|g" infrastructure/k8s/manifests/*.yaml
-                    kubectl apply -f infrastructure/k8s/manifests/ --namespace=${K8S_NAMESPACE}
-                    kubectl rollout status deployment/auth-service  --namespace=${K8S_NAMESPACE} --timeout=120s
-                    kubectl rollout status deployment/donor-service --namespace=${K8S_NAMESPACE} --timeout=120s
-                    echo "Deployment complete."
-                    kubectl get pods --namespace=${K8S_NAMESPACE}
-                '''
-            }
-        }
+Recommended server storage:
 
-        stage('Health Check') {
-            when { branch 'main' }
-            steps {
-                sh '''
-                    sleep 15
-                    curl -sf https://bden.hinkaku.tech/health/ \
-                      && echo "Health check: PASSED" \
-                      || echo "Health check: FAILED — check logs"
-                '''
-            }
-        }
-    }
-
-    post {
-        success { echo "Pipeline succeeded. Build #${BUILD_NUMBER} deployed." }
-        failure { echo "Pipeline FAILED at stage: ${env.STAGE_NAME}." }
-        always {
-            sh 'docker image prune -f || true'
-            cleanWs()
-        }
-    }
-}
+```bash
+sudo mkdir -p /var/www/bden
+sudo cp /var/www/bden/.env.prod.example /var/www/bden/.env.prod
+sudo nano /var/www/bden/.env.prod
+sudo chown jenkins:jenkins /var/www/bden/.env.prod
+sudo chmod 600 /var/www/bden/.env.prod
 ```
+
+Then link it into the Jenkins workspace after the first checkout:
+
+```bash
+cd /var/lib/jenkins/workspace/BDEN-Pipeline
+ln -sf /var/www/bden/.env.prod .env.prod
+```
+
+> Keep `.env.prod` on the VPS only. Do not commit it.
+
+### 11.4 — Validate the Jenkinsfile manually
+
+From `/var/www/bden` or the Jenkins workspace:
+
+```bash
+docker compose --env-file .env.example config --quiet
+docker compose --env-file .env.example -f docker-compose.prod.yml config --quiet
+```
+
+Expected behavior: no output and exit code `0`.
+
+### 11.5 — Jenkins and Docker permissions
+
+Native Jenkins must be able to run Docker:
+
+```bash
+sudo usermod -aG docker jenkins
+sudo systemctl restart jenkins
+```
+
+Verify as the Jenkins user:
+
+```bash
+sudo -u jenkins docker ps
+```
+
+Expected behavior: Docker lists containers or an empty table without permission errors.
 
 ---
 
-## Section 12 — Docker Compose — Production Override
+## Section 12 — Docker Compose — Production Stack
 
-The VPS uses a production override file on top of the base `docker-compose.yml`. It removes live-reload volume mounts, uses pre-built images, and avoids exposing internal service/database ports publicly.
+The production stack now uses a standalone file: `docker-compose.prod.yml`.
 
-Save this as `/var/www/bden/docker-compose.prod.yml`:
+This is intentionally separate from `docker-compose.yml`:
 
-```yaml
-version: '3.9'
+- `docker-compose.yml` is local-development friendly and exposes service/database ports.
+- `docker-compose.prod.yml` is production-focused and exposes only loopback ports for host Nginx.
+- Jenkins uses `docker-compose.prod.yml` for production deploys.
+- Native Jenkins runs outside the app stack; do not deploy Jenkins from BDEN Compose in production.
 
-services:
+### 12.1 — Production ports
 
-  redis:
-    restart: unless-stopped
-    ports:
-      - "6380:6379"   # host 6380 → container 6379
+The production Compose stack exposes only these host ports:
 
-  auth-db:
-    restart: unless-stopped
-    ports:
-      - "5440:5432"
+| Host address | Purpose |
+|--------------|---------|
+| `127.0.0.1:8088` | React frontend container |
+| `127.0.0.1:8080` | Backend API gateway container |
 
-  donor-db:
-    restart: unless-stopped
-    ports:
-      - "5441:5432"
+Host Nginx remains the public entry point on ports `80` and `443`.
 
-  request-db:
-    restart: unless-stopped
-    ports:
-      - "5442:5432"
+Recommended host Nginx routing:
 
-  campaign-db:
-    restart: unless-stopped
-    ports:
-      - "5443:5432"
-
-  notification-db:
-    restart: unless-stopped
-    ports:
-      - "5444:5432"
-
-  auth-service:
-    image: your-dockerhub-username/bden-auth:latest
-    command: gunicorn config.wsgi:application --bind 0.0.0.0:8001 --workers 3
-    restart: unless-stopped
-    environment:
-      - DJANGO_SETTINGS_MODULE=config.settings.production
-
-  donor-service:
-    image: your-dockerhub-username/bden-donor:latest
-    command: gunicorn config.wsgi:application --bind 0.0.0.0:8002 --workers 3
-    restart: unless-stopped
-    environment:
-      - DJANGO_SETTINGS_MODULE=config.settings.production
-
-  request-service:
-    image: your-dockerhub-username/bden-request:latest
-    command: gunicorn config.wsgi:application --bind 0.0.0.0:8003 --workers 3
-    restart: unless-stopped
-    environment:
-      - DJANGO_SETTINGS_MODULE=config.settings.production
-
-  campaign-service:
-    image: your-dockerhub-username/bden-campaign:latest
-    command: gunicorn config.wsgi:application --bind 0.0.0.0:8004 --workers 2
-    restart: unless-stopped
-    environment:
-      - DJANGO_SETTINGS_MODULE=config.settings.production
-
-  notification-service:
-    image: your-dockerhub-username/bden-notification:latest
-    command: gunicorn config.wsgi:application --bind 0.0.0.0:8005 --workers 2
-    restart: unless-stopped
-    environment:
-      - DJANGO_SETTINGS_MODULE=config.settings.production
-
-  celery-worker:
-    image: your-dockerhub-username/bden-notification:latest
-    command: celery -A config worker --loglevel=info --concurrency=2
-    restart: unless-stopped
-    environment:
-      - DJANGO_SETTINGS_MODULE=config.settings.production
-
-  celery-beat:
-    image: your-dockerhub-username/bden-notification:latest
-    command: celery -A config beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
-    restart: unless-stopped
-    environment:
-      - DJANGO_SETTINGS_MODULE=config.settings.production
-
-  nginx:
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:18080:80"   # optional Compose smoke-test port only
+```text
+/              -> http://127.0.0.1:8088
+/api/          -> http://127.0.0.1:8080
+/health/       -> http://127.0.0.1:8080
+/django-admin/ -> http://127.0.0.1:8080
 ```
 
-### First-time startup on VPS
+### 12.2 — Production files now expected in the repo
 
-All commands below use both compose files together with `-f docker-compose.yml -f docker-compose.prod.yml`. You can create a shell alias to shorten this:
+These files should exist after pulling the latest `main`:
 
-```bash
-alias dc='docker compose -f /var/www/bden/docker-compose.yml -f /var/www/bden/docker-compose.prod.yml'
+```text
+Jenkinsfile
+docker-compose.prod.yml
+.env.prod.example
+frontend/Dockerfile
+frontend/nginx.conf
+frontend/.dockerignore
 ```
 
-**Pull images (after first Jenkins push):**
+Check:
+
 ```bash
 cd /var/www/bden
-docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
+git pull origin main
+ls Jenkinsfile docker-compose.prod.yml .env.prod.example frontend/Dockerfile frontend/nginx.conf
 ```
 
-**Start infrastructure first:**
+### 12.3 — Create the production environment file
+
+Copy the template:
+
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml \
-  up -d redis auth-db donor-db request-db campaign-db notification-db
-
-echo "Waiting 20 seconds for databases to initialize..."
-sleep 20
+cd /var/www/bden
+cp .env.prod.example .env.prod
+nano .env.prod
+chmod 600 .env.prod
 ```
 
-**Run migrations for all services:**
+At minimum, replace:
+
+- all `change-me-*` secret keys;
+- all database passwords;
+- `ALLOWED_HOSTS`;
+- `FRONTEND_URL`;
+- `VITE_API_BASE_URL`;
+- Google OAuth values if Google login is enabled.
+
+For the current domain/IP situation, keep both the domain and raw IP where useful:
+
+```env
+ALLOWED_HOSTS=bden.hinkaku.tech,3.77.183.190,localhost,127.0.0.1,auth-service,donor-service,request-service,campaign-service,notification-service
+FRONTEND_URL=https://bden.hinkaku.tech
+VITE_API_BASE_URL=https://bden.hinkaku.tech
+GOOGLE_REDIRECT_URI=https://bden.hinkaku.tech/auth/google/callback
+GOOGLE_AUTH_FRONTEND_CALLBACK_URL=https://bden.hinkaku.tech/auth/google/callback
+```
+
+Google OAuth authorized redirect URIs should include:
+
+```text
+https://bden.hinkaku.tech/auth/google/callback
+http://3.77.183.190/auth/google/callback
+```
+
+Use the raw IP callback only while testing without the domain/SSL path.
+
+### 12.4 — Validate production Compose
+
 ```bash
-for svc in auth-service donor-service request-service campaign-service notification-service; do
-  docker compose -f docker-compose.yml -f docker-compose.prod.yml \
-    run --rm $svc python manage.py migrate --noinput
-done
+cd /var/www/bden
+docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod config --quiet
 ```
 
-**Seed initial data and create superuser:**
+Expected behavior: no output and exit code `0`.
+
+### 12.5 — First-time startup on VPS
+
+Start the production stack:
+
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml \
-  run --rm donor-service python manage.py seed_screening_centers
-
-docker compose -f docker-compose.yml -f docker-compose.prod.yml \
-  run --rm auth-service python manage.py createsuperuser
+cd /var/www/bden
+docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod up -d --build
 ```
 
-**Start all services:**
+The service containers run migrations and `collectstatic` during startup.
+
+Seed donor screening centers after the first startup:
+
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod \
+  exec donor-service python manage.py seed_screening_centers
 ```
 
-✅ **CHECK:**
+Create the first Django admin user in auth-service:
+
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
-# Expected: every service shows State = Up (healthy)
+docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod \
+  exec auth-service python manage.py createsuperuser
 ```
+
+### 12.6 — Health checks
+
+```bash
+curl -fsS http://127.0.0.1:8088/health/
+curl -fsS http://127.0.0.1:8080/health/auth/
+curl -fsS http://127.0.0.1:8080/health/donor/
+curl -fsS http://127.0.0.1:8080/health/request/
+curl -fsS http://127.0.0.1:8080/health/campaign/
+curl -fsS http://127.0.0.1:8080/health/notification/
+```
+
+Expected behavior: every command returns JSON with service status.
+
+### 12.7 — Useful production Compose commands
+
+```bash
+# See status
+docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod ps
+
+# Tail logs
+docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod logs -f gateway
+
+# Restart one service
+docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod up -d --no-deps --build auth-service
+
+# Stop the production stack intentionally
+docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod down
+```
+
+### 12.8 — What about k3s?
+
+k3s is still documented because it remains the planned orchestration direction. However, the active production deployment path for the current milestone is Docker Compose. Do not configure Jenkins to run `kubectl apply` until the Kubernetes manifests are finalized and tested.
 
 ---
-
 ## Section 13 — Prometheus and Grafana
 
 ### 13.1 — Create directories
@@ -2392,6 +2306,46 @@ Work through this together before calling the VPS "production ready".
 
 ## Troubleshooting
 
+### Docker build cannot resolve Debian repositories
+
+If Jenkins fails during image build with:
+
+```text
+Temporary failure resolving 'deb.debian.org'
+E: Unable to locate package build-essential
+```
+
+the pipeline has not reached Django tests yet. Docker cannot resolve package repositories during `apt-get update`.
+
+Check DNS from the VPS:
+
+```bash
+getent hosts deb.debian.org
+curl -I https://deb.debian.org
+docker run --rm python:3.11-slim-bookworm getent hosts deb.debian.org
+```
+
+If host DNS works but Docker DNS fails, configure Docker daemon DNS:
+
+```bash
+sudo mkdir -p /etc/docker
+sudo tee /etc/docker/daemon.json >/dev/null <<'EOF'
+{
+  "dns": ["1.1.1.1", "8.8.8.8"]
+}
+EOF
+
+sudo systemctl restart docker
+sudo systemctl restart jenkins
+```
+
+Then retry one image build:
+
+```bash
+cd /var/www/bden
+docker compose --env-file .env.example -p bden-ci build request-service
+```
+
 ### Jenkins not triggering on push
 
 ```bash
@@ -2473,3 +2427,4 @@ sudo ss -tlnp | grep <port-number>
 docker compose -f docker-compose.yml -f docker-compose.prod.yml \
   up -d --no-deps <service-name>
 ```
+

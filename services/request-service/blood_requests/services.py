@@ -23,7 +23,9 @@ def create_request(validated_data):
     if matched_donors:
         store_matching_results(blood_request, matched_donors)
         for donor in matched_donors:
-            publish_event("EMERGENCY_REQUEST_CREATED", {**payload, "donor_id": donor.get("user_id") or donor.get("id"), "distance_km": donor.get("distance_km")})
+            donor_id = donor.get("donor_id") or donor.get("user_id") or donor.get("id")
+            if donor_id:
+                publish_event("EMERGENCY_REQUEST_CREATED", {**payload, "donor_id": donor_id, "distance_km": donor.get("distance_km")})
     else:
         publish_event("EMERGENCY_REQUEST_CREATED", payload)
     return blood_request
