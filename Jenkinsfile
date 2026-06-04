@@ -49,6 +49,12 @@ pipeline {
             }
         }
 
+        stage('Docker Network Preflight') {
+            steps {
+                sh 'docker run --rm python:3.11-slim-bookworm python -c "import socket; print(socket.gethostbyname(\\\"pypi.org\\\"))"'
+            }
+        }
+
         stage('Build CI Images') {
             steps {
                 sh 'docker compose --env-file ${CI_ENV_FILE} -p ${CI_PROJECT} build auth-service donor-service request-service campaign-service notification-service'
