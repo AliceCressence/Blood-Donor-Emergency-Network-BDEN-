@@ -82,7 +82,7 @@ services:
       DEBUG: ${DEBUG:-True}
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,auth-service}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
-      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-change-me-auth}
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-change-me-auth-dev-key-at-least-32-bytes}
       AUTH_DB_NAME: ${AUTH_DB_NAME:-bden_auth}
       AUTH_DB_USER: ${AUTH_DB_USER:-bden_user}
       AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD:-bden_password}
@@ -117,7 +117,7 @@ services:
       DEBUG: ${DEBUG:-True}
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,donor-service}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
-      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-change-me-auth}
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-change-me-auth-dev-key-at-least-32-bytes}
       DONOR_SECRET_KEY: ${DONOR_SECRET_KEY:-change-me-donor}
       DONOR_DB_NAME: ${DONOR_DB_NAME:-bden_donor}
       DONOR_DB_USER: ${DONOR_DB_USER:-bden_user}
@@ -153,7 +153,7 @@ services:
       DJANGO_SETTINGS_MODULE: config.settings.dev
       DEBUG: ${DEBUG:-True}
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,donor-service}
-      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-change-me-auth}
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-change-me-auth-dev-key-at-least-32-bytes}
       DONOR_SECRET_KEY: ${DONOR_SECRET_KEY:-change-me-donor}
       DONOR_DB_NAME: ${DONOR_DB_NAME:-bden_donor}
       DONOR_DB_USER: ${DONOR_DB_USER:-bden_user}
@@ -180,7 +180,7 @@ services:
       DEBUG: ${DEBUG:-True}
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,request-service}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
-      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-change-me-auth}
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-change-me-auth-dev-key-at-least-32-bytes}
       REQUEST_SECRET_KEY: ${REQUEST_SECRET_KEY:-change-me-request}
       REQUEST_DB_NAME: ${REQUEST_DB_NAME:-bden_request}
       REQUEST_DB_USER: ${REQUEST_DB_USER:-bden_user}
@@ -211,7 +211,7 @@ services:
       DJANGO_SETTINGS_MODULE: config.settings.dev
       DEBUG: ${DEBUG:-True}
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,request-service}
-      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-change-me-auth}
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-change-me-auth-dev-key-at-least-32-bytes}
       REQUEST_SECRET_KEY: ${REQUEST_SECRET_KEY:-change-me-request}
       REQUEST_DB_NAME: ${REQUEST_DB_NAME:-bden_request}
       REQUEST_DB_USER: ${REQUEST_DB_USER:-bden_user}
@@ -237,7 +237,7 @@ services:
       DEBUG: ${DEBUG:-True}
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,campaign-service}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
-      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-change-me-auth}
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-change-me-auth-dev-key-at-least-32-bytes}
       CAMPAIGN_SECRET_KEY: ${CAMPAIGN_SECRET_KEY:-change-me-campaign}
       CAMPAIGN_DB_NAME: ${CAMPAIGN_DB_NAME:-bden_campaign}
       CAMPAIGN_DB_USER: ${CAMPAIGN_DB_USER:-bden_user}
@@ -268,7 +268,7 @@ services:
       DEBUG: ${DEBUG:-True}
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,notification-service}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
-      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-change-me-auth}
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-change-me-auth-dev-key-at-least-32-bytes}
       NOTIFICATION_SECRET_KEY: ${NOTIFICATION_SECRET_KEY:-change-me-notification}
       NOTIFICATION_DB_NAME: ${NOTIFICATION_DB_NAME:-bden_notification}
       NOTIFICATION_DB_USER: ${NOTIFICATION_DB_USER:-bden_user}
@@ -297,7 +297,7 @@ services:
       DJANGO_SETTINGS_MODULE: config.settings.dev
       DEBUG: ${DEBUG:-True}
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,notification-service}
-      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-change-me-auth}
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:-change-me-auth-dev-key-at-least-32-bytes}
       NOTIFICATION_SECRET_KEY: ${NOTIFICATION_SECRET_KEY:-change-me-notification}
       NOTIFICATION_DB_NAME: ${NOTIFICATION_DB_NAME:-bden_notification}
       NOTIFICATION_DB_USER: ${NOTIFICATION_DB_USER:-bden_user}

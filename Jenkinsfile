@@ -84,11 +84,7 @@ pipeline {
 
         stage('Frontend Build') {
             steps {
-                dir('frontend') {
-                    sh 'npm install'
-                    sh 'npm run lint'
-                    sh 'npm run build'
-                }
+                sh 'docker compose --env-file ${CI_ENV_FILE} -f docker-compose.prod.yml -p ${CI_PROJECT} build frontend'
             }
         }
 

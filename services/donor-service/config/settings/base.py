@@ -91,7 +91,7 @@ REST_FRAMEWORK = {
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=int(os.environ.get("ACCESS_TOKEN_LIFETIME_MINUTES", 60))),
     "ALGORITHM": "HS256",
-    "SIGNING_KEY": os.environ.get("AUTH_SECRET_KEY", "change-me-auth"),
+    "SIGNING_KEY": os.environ.get("AUTH_SECRET_KEY", "change-me-auth-dev-key-at-least-32-bytes"),
     "AUTH_HEADER_TYPES": ("Bearer",),
     "USER_ID_CLAIM": "user_id",
 }
