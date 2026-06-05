@@ -26,8 +26,8 @@ services:
       timeout: 5s
       retries: 20
       start_period: 10s
-    # ports:
-    #   - "127.0.0.1:${AUTH_DB_HOST_PORT:-15432}:5432"
+    ports:
+      - "127.0.0.1:${AUTH_DB_HOST_PORT:-15432}:5432"
     volumes:
       - auth_db_data:/var/lib/postgresql/data
     networks:
@@ -46,8 +46,8 @@ services:
       timeout: 5s
       retries: 20
       start_period: 10s
-    # ports:
-    #   - "127.0.0.1:${DONOR_DB_HOST_PORT:-15433}:5432"
+    ports:
+      - "127.0.0.1:${DONOR_DB_HOST_PORT:-15433}:5432"
     volumes:
       - donor_db_data:/var/lib/postgresql/data
     networks:
@@ -66,8 +66,8 @@ services:
       timeout: 5s
       retries: 20
       start_period: 10s
-    # ports:
-    #   - "127.0.0.1:${REQUEST_DB_HOST_PORT:-15434}:5432"
+    ports:
+      - "127.0.0.1:${REQUEST_DB_HOST_PORT:-15434}:5432"
     volumes:
       - request_db_data:/var/lib/postgresql/data
     networks:
@@ -86,8 +86,8 @@ services:
       timeout: 5s
       retries: 20
       start_period: 10s
-    # ports:
-    #   - "127.0.0.1:${CAMPAIGN_DB_HOST_PORT:-15435}:5432"
+    ports:
+      - "127.0.0.1:${CAMPAIGN_DB_HOST_PORT:-15435}:5432"
     volumes:
       - campaign_db_data:/var/lib/postgresql/data
     networks:
@@ -106,8 +106,8 @@ services:
       timeout: 5s
       retries: 20
       start_period: 10s
-    # ports:
-    #   - "127.0.0.1:${NOTIFICATION_DB_HOST_PORT:-15436}:5432"
+    ports:
+      - "127.0.0.1:${NOTIFICATION_DB_HOST_PORT:-15436}:5432"
     volumes:
       - notification_db_data:/var/lib/postgresql/data
     networks:
@@ -122,8 +122,8 @@ services:
       timeout: 5s
       retries: 20
       start_period: 5s
-    # ports:
-    #   - "127.0.0.1:${REDIS_HOST_PORT:-16379}:6379"
+    ports:
+      - "127.0.0.1:${REDIS_HOST_PORT:-16379}:6379"
     volumes:
       - redis_data:/data
     networks:
