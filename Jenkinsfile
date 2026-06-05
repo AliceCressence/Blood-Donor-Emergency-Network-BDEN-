@@ -11,8 +11,13 @@ pipeline {
     parameters {
         booleanParam(
             name: 'DEPLOY_PROD',
-            defaultValue: true,
+            defaultValue: false,
             description: 'Deploy to the VPS production Compose stack when this build runs on main.'
+        )
+        booleanParam(
+            name: 'DEPLOY_ONLY',
+            defaultValue: true,
+            description: 'Skip CI checks/tests and only run production build/deploy. Use for manual deploy retries after CI has already passed.'
         )
     }
 
@@ -52,24 +57,36 @@ pipeline {
         }
 
         stage('Backend Syntax Checks') {
+            when {
+                expression { return !params.DEPLOY_ONLY }
+            }
             steps {
                 sh 'python3 -m compileall services/auth-service services/donor-service services/request-service services/campaign-service services/notification-service'
             }
         }
 
         stage('Docker Network Preflight') {
+            when {
+                expression { return !params.DEPLOY_ONLY }
+            }
             steps {
                 sh 'docker run --rm --network host python:3.11-slim-bookworm python -c "import socket; print(socket.gethostbyname(\\\"pypi.org\\\"))"'
             }
         }
 
         stage('Build CI Images') {
+            when {
+                expression { return !params.DEPLOY_ONLY }
+            }
             steps {
                 sh 'docker compose --env-file ${CI_ENV_FILE} -p ${CI_PROJECT} build auth-service donor-service request-service campaign-service notification-service'
             }
         }
 
         stage('Django Checks') {
+            when {
+                expression { return !params.DEPLOY_ONLY }
+            }
             steps {
                 sh 'docker compose --env-file ${CI_ENV_FILE} -p ${CI_PROJECT} run --rm auth-service python manage.py check'
                 sh 'docker compose --env-file ${CI_ENV_FILE} -p ${CI_PROJECT} run --rm donor-service python manage.py check'
@@ -80,6 +97,9 @@ pipeline {
         }
 
         stage('Django Tests') {
+            when {
+                expression { return !params.DEPLOY_ONLY }
+            }
             steps {
                 sh 'docker compose --env-file ${CI_ENV_FILE} -p ${CI_PROJECT} run --rm auth-service pytest'
                 sh 'docker compose --env-file ${CI_ENV_FILE} -p ${CI_PROJECT} run --rm donor-service pytest'
@@ -90,6 +110,9 @@ pipeline {
         }
 
         stage('Frontend Build') {
+            when {
+                expression { return !params.DEPLOY_ONLY }
+            }
             steps {
                 sh 'docker compose --env-file ${CI_ENV_FILE} -f docker-compose.prod.yml -p ${CI_PROJECT} build frontend'
             }
