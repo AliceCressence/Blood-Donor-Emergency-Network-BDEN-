@@ -1,6 +1,6 @@
 # Jenkins Server Setup on VPS
 
-This guide prepares the CI/CD path for an Ubuntu VPS. For the complete BDEN Lightsail setup, including domain, Nginx, K3s/Kubernetes direction, firewall, and rollback flow, use [BDEN VPS Configuration Guide](vps_config.md).
+This guide prepares the CI/CD path for an Ubuntu VPS. For the complete BDEN Lightsail setup, including domain, Nginx, k3s/Kubernetes, firewall, and rollback flow, use [BDEN VPS Configuration Guide](vps_config_formatted.md).
 
 ## Prerequisites
 
@@ -73,7 +73,7 @@ Use GitHub credentials or a fine-grained PAT if the repository is private.
 
 ## Production Environment File
 
-The production Compose stack expects a real `.env.prod` file. Create it in the Jenkins workspace or symlink it from a safer server path.
+The production Kubernetes deployment expects a real `.env.prod` file. Jenkins uses it to validate/build production images and to create the `bden-env` Kubernetes secret.
 
 Recommended server path:
 
@@ -94,29 +94,19 @@ ln -sf /var/www/bden/.env.prod .env.prod
 
 Do not commit `.env.prod`.
 
-## Production Compose Deployment
+## Production Kubernetes Deployment
 
-The current production deployment path is Docker Compose:
+The current production deployment path is k3s/Kubernetes. Docker Compose is used only to build images:
 
 ```bash
 docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod config --quiet
-docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod up -d --build
+docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod build
 ```
 
-The production stack exposes only local loopback ports:
+Jenkins then pushes those images to the local registry and applies `infrastructure/k8s/*.yaml`. Host Nginx should proxy public BDEN traffic to:
 
 ```text
-127.0.0.1:8088 -> frontend React app
-127.0.0.1:8080 -> backend API gateway
-```
-
-Host Nginx should proxy:
-
-```text
-/      -> http://127.0.0.1:8088
-/api/  -> http://127.0.0.1:8080
-/health/ -> http://127.0.0.1:8080
-/django-admin/ -> http://127.0.0.1:8080
+127.0.0.1:30080 -> Kubernetes gateway NodePort
 ```
 
 The root `Jenkinsfile` deploys production only when:
@@ -126,9 +116,15 @@ The root `Jenkinsfile` deploys production only when:
 - `.env.prod` exists in the workspace;
 - CI checks pass first.
 
-## Docker Registry
+## Local Docker Registry
 
-A registry is optional for the current single-VPS Compose deployment because Jenkins builds images directly on the VPS. When moving to K3s, add registry credentials in Jenkins and extend the Jenkinsfile with image push stages for each service.
+The current single-VPS k3s deployment uses a local Docker registry bound to loopback:
+
+```text
+127.0.0.1:5000 -> bden-local-registry
+```
+
+Jenkins builds images with `docker-compose.prod.yml`, tags them as `localhost:5000/bden/<image>:<BUILD_NUMBER>`, pushes them to the local registry, and updates the Kubernetes deployments with those exact tags.
 
 ## Troubleshooting Docker Build DNS
 
@@ -170,14 +166,13 @@ cd /var/www/bden
 docker compose --env-file .env.example -p bden-ci build request-service
 ```
 
-## Future K3s Deployment
+## Kubernetes Deployment Behavior
 
-The planned target is a `bden-prod` K3s namespace. Future deployment stages should:
+The active deployment target is the `bden-prod` k3s namespace. Jenkins:
 
-- build and push service images
-- apply Kubernetes manifests from `infrastructure/k8s`
-- run database migrations as Kubernetes jobs
-- rollout restart changed deployments
-- verify `/health/...` endpoints through the gateway
-
-Until then, Jenkins runs tests, frontend build, production Compose validation, and production Compose deployment on `main`.
+- builds frontend and service images;
+- pushes them to `localhost:5000`;
+- creates or updates the `bden-env` secret from `.env.prod`;
+- applies manifests from `infrastructure/k8s`;
+- updates deployment images to the current build tag;
+- verifies `/health/...` endpoints through `127.0.0.1:30080`.

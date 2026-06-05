@@ -1,47 +1,49 @@
 # Deployment Notes
 
-The production target is an AWS Lightsail VPS with host Nginx as the public reverse proxy. The current deployable MVP uses Docker Compose through `docker-compose.prod.yml`; K3s/Kubernetes remains the orchestration direction for the next deployment phase. The detailed server setup guide is [BDEN VPS Configuration Guide](vps_config.md).
+The production target is an AWS Lightsail VPS with host Nginx as the public reverse proxy. The active production runtime is k3s/Kubernetes. Docker Compose is still used by Jenkins to build production images through `docker-compose.prod.yml`, then those images are pushed to the local VPS registry and deployed to k3s. The detailed server setup guide is [BDEN VPS Configuration Guide](vps_config_formatted.md).
 
 ## MVP Deployment Shape
 
 - Host Nginx is the public entry point.
-- `frontend` serves the built React/Vite app on `127.0.0.1:8088`.
-- `gateway` serves the backend API gateway on `127.0.0.1:8080`.
-- Django services run as independent containers.
+- Host Nginx proxies BDEN traffic to the k3s gateway NodePort at `127.0.0.1:30080`.
+- `frontend` serves the built React/Vite app inside the cluster.
+- `gateway` is an in-cluster Nginx deployment that routes frontend and API traffic.
+- Django services run as independent Kubernetes deployments.
 - Each service owns its own PostgreSQL database.
 - Redis supports event publication and later Celery task queues.
-- Jenkins runs checkout, syntax checks, Django checks/tests, frontend lint/build, Compose validation, production image build, and production deployment on `main`.
+- Jenkins runs checkout, syntax checks, Django checks/tests, frontend build, Compose validation, production image build, local registry push, and Kubernetes deployment on `main`.
 - Prometheus and Grafana will collect service health and performance metrics.
 
-## Compose Files
+## Runtime Files
 
-Use different Compose files for different environments:
+Use different files for build-time and runtime:
 
 ```text
 docker-compose.yml        Local development stack
-docker-compose.prod.yml   Production Docker Compose stack
+docker-compose.prod.yml   Production image build file
+infrastructure/k8s/*.yaml Production Kubernetes runtime manifests
 ```
 
-The local file intentionally exposes service and database ports for debugging. The production file only exposes the frontend and backend gateway on loopback ports so host Nginx can proxy them safely.
+The local file intentionally exposes service and database ports for debugging. The production Compose file is used to build images on the VPS. The public site is served by host Nginx through the Kubernetes gateway NodePort.
 
-Production startup:
+Production validation/build:
 
 ```bash
 cp .env.prod.example .env.prod
 # edit .env.prod with real secrets, domain, OAuth values, and DB passwords
 docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod config --quiet
-docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod up -d --build
+docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod build
 ```
 
 Health checks from the VPS:
 
 ```bash
-curl http://127.0.0.1:8088/health/
-curl http://127.0.0.1:8080/health/auth/
-curl http://127.0.0.1:8080/health/donor/
-curl http://127.0.0.1:8080/health/request/
-curl http://127.0.0.1:8080/health/campaign/
-curl http://127.0.0.1:8080/health/notification/
+curl -H "Host: bden.hinkaku.tech" http://127.0.0.1:30080/health/
+curl -H "Host: bden.hinkaku.tech" http://127.0.0.1:30080/health/auth/
+curl -H "Host: bden.hinkaku.tech" http://127.0.0.1:30080/health/donor/
+curl -H "Host: bden.hinkaku.tech" http://127.0.0.1:30080/health/request/
+curl -H "Host: bden.hinkaku.tech" http://127.0.0.1:30080/health/campaign/
+curl -H "Host: bden.hinkaku.tech" http://127.0.0.1:30080/health/notification/
 ```
 
 ## Production Settings
@@ -107,4 +109,4 @@ The intended K3s production namespace is `bden-prod`. Each Django service should
 
 - Local Windows/Docker setup: [Jenkins Local Setup on Windows](jenkins-local-windows.md)
 - VPS setup path: [Jenkins Server Setup on VPS](jenkins-server-vps.md)
-- Full Lightsail production guide: [BDEN VPS Configuration Guide](vps_config.md)
+- Full Lightsail production guide: [BDEN VPS Configuration Guide](vps_config_formatted.md)

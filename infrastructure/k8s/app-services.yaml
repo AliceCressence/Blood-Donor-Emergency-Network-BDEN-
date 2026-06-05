@@ -38,11 +38,21 @@ spec:
               python manage.py collectstatic --no-input &&
               gunicorn config.wsgi:application --bind 0.0.0.0:8001 --workers ${GUNICORN_WORKERS:-3}
           readinessProbe:
-            httpGet: { path: /health/, port: 8001 }
+            httpGet:
+              path: /health/
+              port: 8001
+              httpHeaders:
+                - name: Host
+                  value: bden.hinkaku.tech
             initialDelaySeconds: 20
             periodSeconds: 10
           livenessProbe:
-            httpGet: { path: /health/, port: 8001 }
+            httpGet:
+              path: /health/
+              port: 8001
+              httpHeaders:
+                - name: Host
+                  value: bden.hinkaku.tech
             initialDelaySeconds: 60
             periodSeconds: 20
 ---
@@ -100,11 +110,21 @@ spec:
               python manage.py collectstatic --no-input &&
               gunicorn config.wsgi:application --bind 0.0.0.0:8002 --workers ${GUNICORN_WORKERS:-3}
           readinessProbe:
-            httpGet: { path: /health/, port: 8002 }
+            httpGet:
+              path: /health/
+              port: 8002
+              httpHeaders:
+                - name: Host
+                  value: bden.hinkaku.tech
             initialDelaySeconds: 20
             periodSeconds: 10
           livenessProbe:
-            httpGet: { path: /health/, port: 8002 }
+            httpGet:
+              path: /health/
+              port: 8002
+              httpHeaders:
+                - name: Host
+                  value: bden.hinkaku.tech
             initialDelaySeconds: 60
             periodSeconds: 20
 ---
@@ -160,11 +180,21 @@ spec:
               python manage.py collectstatic --no-input &&
               gunicorn config.wsgi:application --bind 0.0.0.0:8003 --workers ${GUNICORN_WORKERS:-3}
           readinessProbe:
-            httpGet: { path: /health/, port: 8003 }
+            httpGet:
+              path: /health/
+              port: 8003
+              httpHeaders:
+                - name: Host
+                  value: bden.hinkaku.tech
             initialDelaySeconds: 20
             periodSeconds: 10
           livenessProbe:
-            httpGet: { path: /health/, port: 8003 }
+            httpGet:
+              path: /health/
+              port: 8003
+              httpHeaders:
+                - name: Host
+                  value: bden.hinkaku.tech
             initialDelaySeconds: 60
             periodSeconds: 20
 ---
@@ -220,11 +250,21 @@ spec:
               python manage.py collectstatic --no-input &&
               gunicorn config.wsgi:application --bind 0.0.0.0:8004 --workers ${GUNICORN_WORKERS:-3}
           readinessProbe:
-            httpGet: { path: /health/, port: 8004 }
+            httpGet:
+              path: /health/
+              port: 8004
+              httpHeaders:
+                - name: Host
+                  value: bden.hinkaku.tech
             initialDelaySeconds: 20
             periodSeconds: 10
           livenessProbe:
-            httpGet: { path: /health/, port: 8004 }
+            httpGet:
+              path: /health/
+              port: 8004
+              httpHeaders:
+                - name: Host
+                  value: bden.hinkaku.tech
             initialDelaySeconds: 60
             periodSeconds: 20
 ---
@@ -278,11 +318,21 @@ spec:
               python manage.py collectstatic --no-input &&
               gunicorn config.wsgi:application --bind 0.0.0.0:8005 --workers ${GUNICORN_WORKERS:-3}
           readinessProbe:
-            httpGet: { path: /health/, port: 8005 }
+            httpGet:
+              path: /health/
+              port: 8005
+              httpHeaders:
+                - name: Host
+                  value: bden.hinkaku.tech
             initialDelaySeconds: 20
             periodSeconds: 10
           livenessProbe:
-            httpGet: { path: /health/, port: 8005 }
+            httpGet:
+              path: /health/
+              port: 8005
+              httpHeaders:
+                - name: Host
+                  value: bden.hinkaku.tech
             initialDelaySeconds: 60
             periodSeconds: 20
 ---

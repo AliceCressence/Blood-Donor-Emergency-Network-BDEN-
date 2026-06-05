@@ -12,7 +12,7 @@ pipeline {
         booleanParam(
             name: 'DEPLOY_PROD',
             defaultValue: true,
-            description: 'Deploy to the VPS production Compose stack when this build runs on main.'
+            description: 'Deploy to the VPS production Kubernetes stack when this build runs on main.'
         )
         booleanParam(
             name: 'DEPLOY_ONLY',
@@ -173,6 +173,27 @@ pipeline {
                 sh '''
                     set -eu
 
+                    rollout_status() {
+                        kind="$1"
+                        name="$2"
+                        timeout="${3:-240s}"
+
+                        if kubectl rollout status "${kind}/${name}" -n "${K8S_NAMESPACE}" --timeout="${timeout}"; then
+                            return 0
+                        fi
+
+                        echo "ERROR: rollout failed for ${kind}/${name}" >&2
+                        echo "--- Pods ---" >&2
+                        kubectl get pods -n "${K8S_NAMESPACE}" -o wide || true
+                        echo "--- ${kind}/${name} details ---" >&2
+                        kubectl describe "${kind}/${name}" -n "${K8S_NAMESPACE}" || true
+                        echo "--- Recent namespace events ---" >&2
+                        kubectl get events -n "${K8S_NAMESPACE}" --sort-by=.lastTimestamp | tail -120 || true
+                        echo "--- Logs for app=${name} ---" >&2
+                        kubectl logs -n "${K8S_NAMESPACE}" -l "app=${name}" --all-containers --tail=180 || true
+                        exit 1
+                    }
+
                     if ! docker inspect bden-local-registry >/dev/null 2>&1; then
                         docker run -d \
                             --restart unless-stopped \
@@ -204,7 +225,9 @@ EOF
                         compose_image="$1"
                         registry_image="$2"
                         docker tag "${compose_image}" "${LOCAL_REGISTRY}/bden/${registry_image}:latest"
+                        docker tag "${compose_image}" "${LOCAL_REGISTRY}/bden/${registry_image}:${BUILD_NUMBER}"
                         docker push "${LOCAL_REGISTRY}/bden/${registry_image}:latest"
+                        docker push "${LOCAL_REGISTRY}/bden/${registry_image}:${BUILD_NUMBER}"
                     }
 
                     publish_image "${PROD_PROJECT}-frontend:latest" frontend
@@ -221,35 +244,35 @@ EOF
                         --dry-run=client -o yaml | kubectl apply -f -
 
                     kubectl apply -f infrastructure/k8s/data-services.yaml
-                    kubectl rollout status statefulset/auth-db -n "${K8S_NAMESPACE}" --timeout=180s
-                    kubectl rollout status statefulset/donor-db -n "${K8S_NAMESPACE}" --timeout=180s
-                    kubectl rollout status statefulset/request-db -n "${K8S_NAMESPACE}" --timeout=180s
-                    kubectl rollout status statefulset/campaign-db -n "${K8S_NAMESPACE}" --timeout=180s
-                    kubectl rollout status statefulset/notification-db -n "${K8S_NAMESPACE}" --timeout=180s
-                    kubectl rollout status statefulset/redis -n "${K8S_NAMESPACE}" --timeout=180s
+                    rollout_status statefulset auth-db 180s
+                    rollout_status statefulset donor-db 180s
+                    rollout_status statefulset request-db 180s
+                    rollout_status statefulset campaign-db 180s
+                    rollout_status statefulset notification-db 180s
+                    rollout_status statefulset redis 180s
 
                     kubectl apply -f infrastructure/k8s/app-services.yaml
                     kubectl apply -f infrastructure/k8s/event-consumers.yaml
                     kubectl apply -f infrastructure/k8s/frontend-gateway.yaml
 
-                    kubectl rollout restart deployment/frontend -n "${K8S_NAMESPACE}"
-                    kubectl rollout restart deployment/auth-service -n "${K8S_NAMESPACE}"
-                    kubectl rollout restart deployment/donor-service -n "${K8S_NAMESPACE}"
-                    kubectl rollout restart deployment/request-service -n "${K8S_NAMESPACE}"
-                    kubectl rollout restart deployment/campaign-service -n "${K8S_NAMESPACE}"
-                    kubectl rollout restart deployment/notification-service -n "${K8S_NAMESPACE}"
-                    kubectl rollout restart deployment/donor-event-consumer -n "${K8S_NAMESPACE}"
-                    kubectl rollout restart deployment/request-event-consumer -n "${K8S_NAMESPACE}"
-                    kubectl rollout restart deployment/notification-event-consumer -n "${K8S_NAMESPACE}"
+                    kubectl set image deployment/frontend frontend="${LOCAL_REGISTRY}/bden/frontend:${BUILD_NUMBER}" -n "${K8S_NAMESPACE}"
+                    kubectl set image deployment/auth-service auth-service="${LOCAL_REGISTRY}/bden/auth-service:${BUILD_NUMBER}" -n "${K8S_NAMESPACE}"
+                    kubectl set image deployment/donor-service donor-service="${LOCAL_REGISTRY}/bden/donor-service:${BUILD_NUMBER}" -n "${K8S_NAMESPACE}"
+                    kubectl set image deployment/request-service request-service="${LOCAL_REGISTRY}/bden/request-service:${BUILD_NUMBER}" -n "${K8S_NAMESPACE}"
+                    kubectl set image deployment/campaign-service campaign-service="${LOCAL_REGISTRY}/bden/campaign-service:${BUILD_NUMBER}" -n "${K8S_NAMESPACE}"
+                    kubectl set image deployment/notification-service notification-service="${LOCAL_REGISTRY}/bden/notification-service:${BUILD_NUMBER}" -n "${K8S_NAMESPACE}"
+                    kubectl set image deployment/donor-event-consumer donor-event-consumer="${LOCAL_REGISTRY}/bden/donor-service:${BUILD_NUMBER}" -n "${K8S_NAMESPACE}"
+                    kubectl set image deployment/request-event-consumer request-event-consumer="${LOCAL_REGISTRY}/bden/request-service:${BUILD_NUMBER}" -n "${K8S_NAMESPACE}"
+                    kubectl set image deployment/notification-event-consumer notification-event-consumer="${LOCAL_REGISTRY}/bden/notification-service:${BUILD_NUMBER}" -n "${K8S_NAMESPACE}"
                     kubectl rollout restart deployment/gateway -n "${K8S_NAMESPACE}"
 
-                    kubectl rollout status deployment/frontend -n "${K8S_NAMESPACE}" --timeout=240s
-                    kubectl rollout status deployment/auth-service -n "${K8S_NAMESPACE}" --timeout=240s
-                    kubectl rollout status deployment/donor-service -n "${K8S_NAMESPACE}" --timeout=240s
-                    kubectl rollout status deployment/request-service -n "${K8S_NAMESPACE}" --timeout=240s
-                    kubectl rollout status deployment/campaign-service -n "${K8S_NAMESPACE}" --timeout=240s
-                    kubectl rollout status deployment/notification-service -n "${K8S_NAMESPACE}" --timeout=240s
-                    kubectl rollout status deployment/gateway -n "${K8S_NAMESPACE}" --timeout=240s
+                    rollout_status deployment frontend 240s
+                    rollout_status deployment auth-service 240s
+                    rollout_status deployment donor-service 240s
+                    rollout_status deployment request-service 240s
+                    rollout_status deployment campaign-service 240s
+                    rollout_status deployment notification-service 240s
+                    rollout_status deployment gateway 240s
 
                     if sudo -n true >/dev/null 2>&1; then
                         sudo cp infrastructure/nginx/bden.host.k8s.conf /etc/nginx/sites-available/bden
