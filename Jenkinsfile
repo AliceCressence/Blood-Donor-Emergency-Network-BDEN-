@@ -83,6 +83,16 @@ pipeline {
             }
         }
 
+        stage('Start CI Dependencies') {
+            when {
+                expression { return !params.DEPLOY_ONLY }
+            }
+            steps {
+                sh 'docker compose --env-file ${CI_ENV_FILE} -p ${CI_PROJECT} up -d --wait auth-db donor-db request-db campaign-db notification-db redis'
+                sh 'docker compose --env-file ${CI_ENV_FILE} -p ${CI_PROJECT} ps'
+            }
+        }
+
         stage('Django Checks') {
             when {
                 expression { return !params.DEPLOY_ONLY }
@@ -157,7 +167,8 @@ pipeline {
                 }
                 sh 'docker compose --env-file ${RESOLVED_PROD_ENV_FILE} -f docker-compose.prod.yml -p ${PROD_PROJECT} config --quiet'
                 sh 'docker compose --env-file ${RESOLVED_PROD_ENV_FILE} -f docker-compose.prod.yml -p ${PROD_PROJECT} build'
-                sh 'docker compose --env-file ${RESOLVED_PROD_ENV_FILE} -f docker-compose.prod.yml -p ${PROD_PROJECT} up -d --remove-orphans'
+                sh 'docker compose --env-file ${RESOLVED_PROD_ENV_FILE} -f docker-compose.prod.yml -p ${PROD_PROJECT} down --remove-orphans'
+                sh 'docker compose --env-file ${RESOLVED_PROD_ENV_FILE} -f docker-compose.prod.yml -p ${PROD_PROJECT} up -d --wait --remove-orphans'
                 sh '''
                     set -eu
 
@@ -177,7 +188,7 @@ pipeline {
 
                         echo "ERROR: ${name} health check failed after retries: ${url}" >&2
                         docker compose --env-file "${RESOLVED_PROD_ENV_FILE}" -f docker-compose.prod.yml -p "${PROD_PROJECT}" ps
-                        docker compose --env-file "${RESOLVED_PROD_ENV_FILE}" -f docker-compose.prod.yml -p "${PROD_PROJECT}" logs --tail=120
+                        docker compose --env-file "${RESOLVED_PROD_ENV_FILE}" -f docker-compose.prod.yml -p "${PROD_PROJECT}" logs --tail=160
                         exit 1
                     }
 
