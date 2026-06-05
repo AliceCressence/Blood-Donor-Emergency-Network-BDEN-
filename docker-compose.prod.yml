@@ -125,7 +125,7 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.prod
       DEBUG: "False"
-      SECURE_SSL_REDIRECT: ${SECURE_SSL_REDIRECT:-True}
+      SECURE_SSL_REDIRECT: "False"
       ALLOWED_HOSTS: ${ALLOWED_HOSTS}
       FRONTEND_URL: ${FRONTEND_URL}
       AUTH_SECRET_KEY: ${AUTH_SECRET_KEY}
@@ -165,7 +165,7 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.prod
       DEBUG: "False"
-      SECURE_SSL_REDIRECT: ${SECURE_SSL_REDIRECT:-True}
+      SECURE_SSL_REDIRECT: "False"
       ALLOWED_HOSTS: ${ALLOWED_HOSTS}
       FRONTEND_URL: ${FRONTEND_URL}
       AUTH_SECRET_KEY: ${AUTH_SECRET_KEY}
@@ -298,7 +298,7 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.prod
       DEBUG: "False"
-      SECURE_SSL_REDIRECT: ${SECURE_SSL_REDIRECT:-True}
+      SECURE_SSL_REDIRECT: "False"
       ALLOWED_HOSTS: ${ALLOWED_HOSTS}
       FRONTEND_URL: ${FRONTEND_URL}
       AUTH_SECRET_KEY: ${AUTH_SECRET_KEY}
