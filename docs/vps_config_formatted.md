@@ -1822,6 +1822,7 @@ PROJECT="bden-prod"
 NAMESPACE="bden-prod"
 PUBLIC_HOST="bden.hinkaku.tech"
 REGISTRY="localhost:5000"
+DEPLOY_TAG="${BUILD_NUMBER:-manual-$(date +%Y%m%d%H%M%S)}"
 
 check_url() {
   name="$1"
@@ -1841,6 +1842,37 @@ check_url() {
   kubectl get pods -n "${NAMESPACE}" -o wide
   kubectl get events -n "${NAMESPACE}" --sort-by=.lastTimestamp | tail -80
   exit 1
+}
+
+rollout_status() {
+  kind="$1"
+  name="$2"
+  timeout="${3:-240s}"
+
+  if kubectl rollout status "${kind}/${name}" -n "${NAMESPACE}" --timeout="${timeout}"; then
+    return 0
+  fi
+
+  echo "ERROR: rollout failed for ${kind}/${name}" >&2
+  echo "--- Pods ---" >&2
+  kubectl get pods -n "${NAMESPACE}" -o wide || true
+  echo "--- ${kind}/${name} details ---" >&2
+  kubectl describe "${kind}/${name}" -n "${NAMESPACE}" || true
+  echo "--- Recent namespace events ---" >&2
+  kubectl get events -n "${NAMESPACE}" --sort-by=.lastTimestamp | tail -120 || true
+  echo "--- Logs for app=${name} ---" >&2
+  kubectl logs -n "${NAMESPACE}" -l "app=${name}" --all-containers --tail=180 || true
+  exit 1
+}
+
+publish_image() {
+  compose_image="$1"
+  registry_image="$2"
+
+  docker tag "${compose_image}" "${REGISTRY}/bden/${registry_image}:latest"
+  docker tag "${compose_image}" "${REGISTRY}/bden/${registry_image}:${DEPLOY_TAG}"
+  docker push "${REGISTRY}/bden/${registry_image}:latest"
+  docker push "${REGISTRY}/bden/${registry_image}:${DEPLOY_TAG}"
 }
 
 echo "=== BDEN Deploy: $(date) ==="
@@ -1869,19 +1901,12 @@ docker run -d \
   registry:2 2>/dev/null || docker start bden-local-registry
 
 echo "--- Publishing images to local registry..."
-docker tag "${PROJECT}-frontend:latest" "${REGISTRY}/bden/frontend:latest"
-docker tag "${PROJECT}-auth-service:latest" "${REGISTRY}/bden/auth-service:latest"
-docker tag "${PROJECT}-donor-service:latest" "${REGISTRY}/bden/donor-service:latest"
-docker tag "${PROJECT}-request-service:latest" "${REGISTRY}/bden/request-service:latest"
-docker tag "${PROJECT}-campaign-service:latest" "${REGISTRY}/bden/campaign-service:latest"
-docker tag "${PROJECT}-notification-service:latest" "${REGISTRY}/bden/notification-service:latest"
-
-docker push "${REGISTRY}/bden/frontend:latest"
-docker push "${REGISTRY}/bden/auth-service:latest"
-docker push "${REGISTRY}/bden/donor-service:latest"
-docker push "${REGISTRY}/bden/request-service:latest"
-docker push "${REGISTRY}/bden/campaign-service:latest"
-docker push "${REGISTRY}/bden/notification-service:latest"
+publish_image "${PROJECT}-frontend:latest" frontend
+publish_image "${PROJECT}-auth-service:latest" auth-service
+publish_image "${PROJECT}-donor-service:latest" donor-service
+publish_image "${PROJECT}-request-service:latest" request-service
+publish_image "${PROJECT}-campaign-service:latest" campaign-service
+publish_image "${PROJECT}-notification-service:latest" notification-service
 
 echo "--- Applying Kubernetes manifests..."
 kubectl apply -f infrastructure/k8s/namespace.yaml
@@ -1895,21 +1920,24 @@ kubectl apply -f infrastructure/k8s/app-services.yaml
 kubectl apply -f infrastructure/k8s/event-consumers.yaml
 kubectl apply -f infrastructure/k8s/frontend-gateway.yaml
 
-kubectl rollout restart deployment/frontend -n "${NAMESPACE}"
-kubectl rollout restart deployment/auth-service -n "${NAMESPACE}"
-kubectl rollout restart deployment/donor-service -n "${NAMESPACE}"
-kubectl rollout restart deployment/request-service -n "${NAMESPACE}"
-kubectl rollout restart deployment/campaign-service -n "${NAMESPACE}"
-kubectl rollout restart deployment/notification-service -n "${NAMESPACE}"
+kubectl set image deployment/frontend frontend="${REGISTRY}/bden/frontend:${DEPLOY_TAG}" -n "${NAMESPACE}"
+kubectl set image deployment/auth-service auth-service="${REGISTRY}/bden/auth-service:${DEPLOY_TAG}" -n "${NAMESPACE}"
+kubectl set image deployment/donor-service donor-service="${REGISTRY}/bden/donor-service:${DEPLOY_TAG}" -n "${NAMESPACE}"
+kubectl set image deployment/request-service request-service="${REGISTRY}/bden/request-service:${DEPLOY_TAG}" -n "${NAMESPACE}"
+kubectl set image deployment/campaign-service campaign-service="${REGISTRY}/bden/campaign-service:${DEPLOY_TAG}" -n "${NAMESPACE}"
+kubectl set image deployment/notification-service notification-service="${REGISTRY}/bden/notification-service:${DEPLOY_TAG}" -n "${NAMESPACE}"
+kubectl set image deployment/donor-event-consumer donor-event-consumer="${REGISTRY}/bden/donor-service:${DEPLOY_TAG}" -n "${NAMESPACE}"
+kubectl set image deployment/request-event-consumer request-event-consumer="${REGISTRY}/bden/request-service:${DEPLOY_TAG}" -n "${NAMESPACE}"
+kubectl set image deployment/notification-event-consumer notification-event-consumer="${REGISTRY}/bden/notification-service:${DEPLOY_TAG}" -n "${NAMESPACE}"
 kubectl rollout restart deployment/gateway -n "${NAMESPACE}"
 
-kubectl rollout status deployment/frontend -n "${NAMESPACE}" --timeout=240s
-kubectl rollout status deployment/auth-service -n "${NAMESPACE}" --timeout=240s
-kubectl rollout status deployment/donor-service -n "${NAMESPACE}" --timeout=240s
-kubectl rollout status deployment/request-service -n "${NAMESPACE}" --timeout=240s
-kubectl rollout status deployment/campaign-service -n "${NAMESPACE}" --timeout=240s
-kubectl rollout status deployment/notification-service -n "${NAMESPACE}" --timeout=240s
-kubectl rollout status deployment/gateway -n "${NAMESPACE}" --timeout=240s
+rollout_status deployment frontend 240s
+rollout_status deployment auth-service 240s
+rollout_status deployment donor-service 240s
+rollout_status deployment request-service 240s
+rollout_status deployment campaign-service 240s
+rollout_status deployment notification-service 240s
+rollout_status deployment gateway 240s
 
 echo "--- Verifying health..."
 check_url gateway "http://127.0.0.1:30080/health/"
@@ -1962,7 +1990,7 @@ Developer pushes to main (or merges a PR)
     ├── 3. Backend checks/tests — all five Django services, unless DEPLOY_ONLY=true
     ├── 4. Frontend build — unless DEPLOY_ONLY=true
     ├── 5. Build production images — frontend, gateway, all services
-    ├── 6. Deploy production Compose stack — main only
+    ├── 6. Deploy production Kubernetes stack — main only
     └── 7. Health checks — frontend + every service through the gateway
 ```
 
