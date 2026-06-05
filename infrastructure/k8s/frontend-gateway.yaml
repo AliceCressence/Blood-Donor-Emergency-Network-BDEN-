@@ -1,0 +1,138 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: bden-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: localhost:5000/bden/frontend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet: { path: /health/, port: 80 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: bden-prod
+spec:
+  selector:
+    app: frontend
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gateway-nginx-config
+  namespace: bden-prod
+data:
+  default.conf: |
+    upstream frontend_app         { server frontend:80; }
+    upstream auth_service         { server auth-service:8001; }
+    upstream donor_service        { server donor-service:8002; }
+    upstream request_service      { server request-service:8003; }
+    upstream campaign_service     { server campaign-service:8004; }
+    upstream notification_service { server notification-service:8005; }
+
+    server {
+      listen 80;
+      server_name _;
+      client_max_body_size 10m;
+
+      location = /health/ {
+        default_type application/json;
+        return 200 '{"service":"BDEN Kubernetes Gateway","status":"ok"}';
+      }
+
+      location /api/donor/docs/     { proxy_pass http://donor_service/api/docs/; }
+      location /api/donor/redoc/    { proxy_pass http://donor_service/api/redoc/; }
+      location /api/campaign/docs/  { proxy_pass http://campaign_service/api/docs/; }
+      location /api/campaign/redoc/ { proxy_pass http://campaign_service/api/redoc/; }
+
+      location /api/docs/           { proxy_pass http://auth_service; }
+      location /api/schema.json     { proxy_pass http://auth_service; }
+      location /api/auth/           { proxy_pass http://auth_service; }
+      location /api/admin/          { proxy_pass http://auth_service; }
+      location /django-admin/auth/  { proxy_pass http://auth_service/django-admin/; }
+      location /django-admin/donor/ { proxy_pass http://donor_service/django-admin/; }
+
+      location /api/donors/         { proxy_pass http://donor_service; }
+      location /api/estimation/     { proxy_pass http://donor_service; }
+      location /api/requests/       { proxy_pass http://request_service; }
+      location /api/campaigns/      { proxy_pass http://campaign_service; }
+      location /api/myths/          { proxy_pass http://campaign_service; }
+      location /api/ads/            { proxy_pass http://campaign_service; }
+      location /api/notifications/  { proxy_pass http://notification_service; }
+
+      location /health/auth/         { proxy_pass http://auth_service/health/; }
+      location /health/donor/        { proxy_pass http://donor_service/health/; }
+      location /health/request/      { proxy_pass http://request_service/health/; }
+      location /health/campaign/     { proxy_pass http://campaign_service/health/; }
+      location /health/notification/ { proxy_pass http://notification_service/health/; }
+
+      location / {
+        proxy_pass http://frontend_app;
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: bden-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gateway
+  template:
+    metadata:
+      labels:
+        app: gateway
+    spec:
+      containers:
+        - name: gateway
+          image: nginx:1.25-alpine
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: gateway-config
+              mountPath: /etc/nginx/conf.d
+          readinessProbe:
+            httpGet: { path: /health/, port: 80 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: gateway-config
+          configMap:
+            name: gateway-nginx-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+  namespace: bden-prod
+spec:
+  type: NodePort
+  selector:
+    app: gateway
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 30080

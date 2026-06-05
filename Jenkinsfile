@@ -29,6 +29,8 @@ pipeline {
         BDEN_GATEWAY_HOST_PORT = '8080'
         BDEN_FRONTEND_HOST_PORT = '8088'
         BDEN_PUBLIC_HOST = 'bden.hinkaku.tech'
+        K8S_NAMESPACE = 'bden-prod'
+        LOCAL_REGISTRY = 'localhost:5000'
         VITE_API_BASE_URL = 'http://localhost:8000'
         PORT_PREFIX = '1'
         BDEN_BUILD_NETWORK = 'host'
@@ -141,7 +143,7 @@ pipeline {
             }
         }
 
-        stage('Deploy Production') {
+        stage('Deploy Production to Kubernetes') {
             when {
                 allOf {
                     expression { return env.IS_MAIN_BRANCH == 'true' }
@@ -168,8 +170,96 @@ pipeline {
                 }
                 sh 'docker compose --env-file ${RESOLVED_PROD_ENV_FILE} -f docker-compose.prod.yml -p ${PROD_PROJECT} config --quiet'
                 sh 'docker compose --env-file ${RESOLVED_PROD_ENV_FILE} -f docker-compose.prod.yml -p ${PROD_PROJECT} build'
-                sh 'docker compose --env-file ${RESOLVED_PROD_ENV_FILE} -f docker-compose.prod.yml -p ${PROD_PROJECT} down --remove-orphans'
-                sh 'docker compose --env-file ${RESOLVED_PROD_ENV_FILE} -f docker-compose.prod.yml -p ${PROD_PROJECT} up -d --wait --remove-orphans'
+                sh '''
+                    set -eu
+
+                    if ! docker inspect bden-local-registry >/dev/null 2>&1; then
+                        docker run -d \
+                            --restart unless-stopped \
+                            --name bden-local-registry \
+                            -p 127.0.0.1:5000:5000 \
+                            registry:2
+                    elif ! docker inspect -f '{{.State.Running}}' bden-local-registry | grep -q true; then
+                        docker start bden-local-registry
+                    fi
+
+                    if sudo -n true >/dev/null 2>&1; then
+                        sudo mkdir -p /etc/rancher/k3s
+                        if [ ! -f /etc/rancher/k3s/registries.yaml ] || ! sudo grep -q "127.0.0.1:5000" /etc/rancher/k3s/registries.yaml; then
+                            cat > /tmp/bden-registries.yaml <<'EOF'
+mirrors:
+  "localhost:5000":
+    endpoint:
+      - "http://127.0.0.1:5000"
+EOF
+                            sudo cp /tmp/bden-registries.yaml /etc/rancher/k3s/registries.yaml
+                            sudo systemctl restart k3s
+                            kubectl wait --for=condition=Ready node --all --timeout=180s
+                        fi
+                    else
+                        echo "WARNING: Jenkins cannot configure /etc/rancher/k3s/registries.yaml without sudo. Ensure k3s trusts http://127.0.0.1:5000 for localhost:5000 image pulls."
+                    fi
+
+                    publish_image() {
+                        compose_image="$1"
+                        registry_image="$2"
+                        docker tag "${compose_image}" "${LOCAL_REGISTRY}/bden/${registry_image}:latest"
+                        docker push "${LOCAL_REGISTRY}/bden/${registry_image}:latest"
+                    }
+
+                    publish_image "${PROD_PROJECT}-frontend:latest" frontend
+                    publish_image "${PROD_PROJECT}-auth-service:latest" auth-service
+                    publish_image "${PROD_PROJECT}-donor-service:latest" donor-service
+                    publish_image "${PROD_PROJECT}-request-service:latest" request-service
+                    publish_image "${PROD_PROJECT}-campaign-service:latest" campaign-service
+                    publish_image "${PROD_PROJECT}-notification-service:latest" notification-service
+
+                    kubectl apply -f infrastructure/k8s/namespace.yaml
+                    kubectl create secret generic bden-env \
+                        --namespace="${K8S_NAMESPACE}" \
+                        --from-env-file="${RESOLVED_PROD_ENV_FILE}" \
+                        --dry-run=client -o yaml | kubectl apply -f -
+
+                    kubectl apply -f infrastructure/k8s/data-services.yaml
+                    kubectl rollout status statefulset/auth-db -n "${K8S_NAMESPACE}" --timeout=180s
+                    kubectl rollout status statefulset/donor-db -n "${K8S_NAMESPACE}" --timeout=180s
+                    kubectl rollout status statefulset/request-db -n "${K8S_NAMESPACE}" --timeout=180s
+                    kubectl rollout status statefulset/campaign-db -n "${K8S_NAMESPACE}" --timeout=180s
+                    kubectl rollout status statefulset/notification-db -n "${K8S_NAMESPACE}" --timeout=180s
+                    kubectl rollout status statefulset/redis -n "${K8S_NAMESPACE}" --timeout=180s
+
+                    kubectl apply -f infrastructure/k8s/app-services.yaml
+                    kubectl apply -f infrastructure/k8s/event-consumers.yaml
+                    kubectl apply -f infrastructure/k8s/frontend-gateway.yaml
+
+                    kubectl rollout restart deployment/frontend -n "${K8S_NAMESPACE}"
+                    kubectl rollout restart deployment/auth-service -n "${K8S_NAMESPACE}"
+                    kubectl rollout restart deployment/donor-service -n "${K8S_NAMESPACE}"
+                    kubectl rollout restart deployment/request-service -n "${K8S_NAMESPACE}"
+                    kubectl rollout restart deployment/campaign-service -n "${K8S_NAMESPACE}"
+                    kubectl rollout restart deployment/notification-service -n "${K8S_NAMESPACE}"
+                    kubectl rollout restart deployment/donor-event-consumer -n "${K8S_NAMESPACE}"
+                    kubectl rollout restart deployment/request-event-consumer -n "${K8S_NAMESPACE}"
+                    kubectl rollout restart deployment/notification-event-consumer -n "${K8S_NAMESPACE}"
+                    kubectl rollout restart deployment/gateway -n "${K8S_NAMESPACE}"
+
+                    kubectl rollout status deployment/frontend -n "${K8S_NAMESPACE}" --timeout=240s
+                    kubectl rollout status deployment/auth-service -n "${K8S_NAMESPACE}" --timeout=240s
+                    kubectl rollout status deployment/donor-service -n "${K8S_NAMESPACE}" --timeout=240s
+                    kubectl rollout status deployment/request-service -n "${K8S_NAMESPACE}" --timeout=240s
+                    kubectl rollout status deployment/campaign-service -n "${K8S_NAMESPACE}" --timeout=240s
+                    kubectl rollout status deployment/notification-service -n "${K8S_NAMESPACE}" --timeout=240s
+                    kubectl rollout status deployment/gateway -n "${K8S_NAMESPACE}" --timeout=240s
+
+                    if sudo -n true >/dev/null 2>&1; then
+                        sudo cp infrastructure/nginx/bden.host.k8s.conf /etc/nginx/sites-available/bden
+                        sudo ln -sf /etc/nginx/sites-available/bden /etc/nginx/sites-enabled/bden
+                        sudo nginx -t
+                        sudo systemctl reload nginx
+                    else
+                        echo "WARNING: Jenkins cannot update host Nginx without sudo. Ensure /etc/nginx/sites-available/bden proxies bden.hinkaku.tech to http://127.0.0.1:30080"
+                    fi
+                '''
                 sh '''
                     set -eu
 
@@ -188,17 +278,17 @@ pipeline {
                         done
 
                         echo "ERROR: ${name} health check failed after retries: ${url}" >&2
-                        docker compose --env-file "${RESOLVED_PROD_ENV_FILE}" -f docker-compose.prod.yml -p "${PROD_PROJECT}" ps
-                        docker compose --env-file "${RESOLVED_PROD_ENV_FILE}" -f docker-compose.prod.yml -p "${PROD_PROJECT}" logs --tail=160
+                        kubectl get pods -n "${K8S_NAMESPACE}" -o wide
+                        kubectl get events -n "${K8S_NAMESPACE}" --sort-by=.lastTimestamp | tail -80
                         exit 1
                     }
 
-                    check_url frontend "http://127.0.0.1:${BDEN_FRONTEND_HOST_PORT}/health/"
-                    check_url auth "http://127.0.0.1:${BDEN_GATEWAY_HOST_PORT}/health/auth/"
-                    check_url donor "http://127.0.0.1:${BDEN_GATEWAY_HOST_PORT}/health/donor/"
-                    check_url request "http://127.0.0.1:${BDEN_GATEWAY_HOST_PORT}/health/request/"
-                    check_url campaign "http://127.0.0.1:${BDEN_GATEWAY_HOST_PORT}/health/campaign/"
-                    check_url notification "http://127.0.0.1:${BDEN_GATEWAY_HOST_PORT}/health/notification/"
+                    check_url gateway "http://127.0.0.1:30080/health/"
+                    check_url auth "http://127.0.0.1:30080/health/auth/"
+                    check_url donor "http://127.0.0.1:30080/health/donor/"
+                    check_url request "http://127.0.0.1:30080/health/request/"
+                    check_url campaign "http://127.0.0.1:30080/health/campaign/"
+                    check_url notification "http://127.0.0.1:30080/health/notification/"
                 '''
             }
         }
