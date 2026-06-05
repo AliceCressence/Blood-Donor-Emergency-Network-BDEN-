@@ -141,8 +141,10 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
       GOOGLE_AUTH_FRONTEND_CALLBACK_URL: ${GOOGLE_AUTH_FRONTEND_CALLBACK_URL:-}
+      WAIT_FOR_HOSTS: auth-db:5432,redis:6379
     command: >
-      sh -c "python manage.py migrate &&
+      sh -c "python wait_for.py &&
+             python manage.py migrate &&
              python manage.py collectstatic --no-input &&
              gunicorn config.wsgi:application --bind 0.0.0.0:8001 --workers ${GUNICORN_WORKERS:-3}"
     depends_on:
@@ -182,8 +184,10 @@ services:
       MAX_MATCHING_RADIUS_KM: ${MAX_MATCHING_RADIUS_KM:-100}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL_NAME: ${GEMINI_MODEL_NAME:-gemini-1.5-flash}
+      WAIT_FOR_HOSTS: donor-db:5432,redis:6379
     command: >
-      sh -c "python manage.py migrate &&
+      sh -c "python wait_for.py &&
+             python manage.py migrate &&
              python manage.py collectstatic --no-input &&
              gunicorn config.wsgi:application --bind 0.0.0.0:8002 --workers ${GUNICORN_WORKERS:-3}"
     depends_on:
@@ -213,7 +217,8 @@ services:
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       REDIS_CACHE_URL: ${REDIS_CACHE_URL:-redis://redis:6379/1}
-    command: python manage.py consume_events
+      WAIT_FOR_HOSTS: donor-db:5432,redis:6379
+    command: sh -c "python wait_for.py && python manage.py consume_events"
     depends_on:
       donor-db:
         condition: service_healthy
@@ -243,8 +248,10 @@ services:
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       DONOR_SERVICE_URL: http://donor-service:8002
       NOTIFICATION_SERVICE_URL: http://notification-service:8005
+      WAIT_FOR_HOSTS: request-db:5432,redis:6379
     command: >
-      sh -c "python manage.py migrate &&
+      sh -c "python wait_for.py &&
+             python manage.py migrate &&
              python manage.py collectstatic --no-input &&
              gunicorn config.wsgi:application --bind 0.0.0.0:8003 --workers ${GUNICORN_WORKERS:-3}"
     depends_on:
@@ -273,7 +280,8 @@ services:
       REQUEST_DB_PORT: 5432
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-    command: python manage.py consume_events
+      WAIT_FOR_HOSTS: request-db:5432,redis:6379
+    command: sh -c "python wait_for.py && python manage.py consume_events"
     depends_on:
       request-db:
         condition: service_healthy
@@ -303,8 +311,10 @@ services:
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       DONOR_SERVICE_INTERNAL_URL: http://donor-service:8002
+      WAIT_FOR_HOSTS: campaign-db:5432,redis:6379
     command: >
-      sh -c "python manage.py migrate &&
+      sh -c "python wait_for.py &&
+             python manage.py migrate &&
              python manage.py collectstatic --no-input &&
              gunicorn config.wsgi:application --bind 0.0.0.0:8004 --workers ${GUNICORN_WORKERS:-3}"
     depends_on:
@@ -334,8 +344,10 @@ services:
       NOTIFICATION_DB_PORT: 5432
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      WAIT_FOR_HOSTS: notification-db:5432,redis:6379
     command: >
-      sh -c "python manage.py migrate &&
+      sh -c "python wait_for.py &&
+             python manage.py migrate &&
              python manage.py collectstatic --no-input &&
              gunicorn config.wsgi:application --bind 0.0.0.0:8005 --workers ${GUNICORN_WORKERS:-3}"
     depends_on:
@@ -364,7 +376,8 @@ services:
       NOTIFICATION_DB_PORT: 5432
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-    command: python manage.py consume_events
+      WAIT_FOR_HOSTS: notification-db:5432,redis:6379
+    command: sh -c "python wait_for.py && python manage.py consume_events"
     depends_on:
       notification-db:
         condition: service_healthy
