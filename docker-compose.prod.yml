@@ -20,6 +20,12 @@ services:
       POSTGRES_DB: ${AUTH_DB_NAME}
       POSTGRES_USER: ${AUTH_DB_USER}
       POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
     volumes:
       - auth_db_data:/var/lib/postgresql/data
     networks:
@@ -32,6 +38,12 @@ services:
       POSTGRES_DB: ${DONOR_DB_NAME}
       POSTGRES_USER: ${DONOR_DB_USER}
       POSTGRES_PASSWORD: ${DONOR_DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
     volumes:
       - donor_db_data:/var/lib/postgresql/data
     networks:
@@ -44,6 +56,12 @@ services:
       POSTGRES_DB: ${REQUEST_DB_NAME}
       POSTGRES_USER: ${REQUEST_DB_USER}
       POSTGRES_PASSWORD: ${REQUEST_DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
     volumes:
       - request_db_data:/var/lib/postgresql/data
     networks:
@@ -56,6 +74,12 @@ services:
       POSTGRES_DB: ${CAMPAIGN_DB_NAME}
       POSTGRES_USER: ${CAMPAIGN_DB_USER}
       POSTGRES_PASSWORD: ${CAMPAIGN_DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
     volumes:
       - campaign_db_data:/var/lib/postgresql/data
     networks:
@@ -68,6 +92,12 @@ services:
       POSTGRES_DB: ${NOTIFICATION_DB_NAME}
       POSTGRES_USER: ${NOTIFICATION_DB_USER}
       POSTGRES_PASSWORD: ${NOTIFICATION_DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
     volumes:
       - notification_db_data:/var/lib/postgresql/data
     networks:
@@ -76,6 +106,12 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
     volumes:
       - redis_data:/data
     networks:
@@ -110,9 +146,12 @@ services:
              python manage.py collectstatic --no-input &&
              gunicorn config.wsgi:application --bind 0.0.0.0:8001 --workers ${GUNICORN_WORKERS:-3}"
     depends_on:
-      - auth-db
-      - donor-service
-      - redis
+      auth-db:
+        condition: service_healthy
+      donor-service:
+        condition: service_started
+      redis:
+        condition: service_healthy
     networks:
       - bden_network
 
@@ -148,8 +187,10 @@ services:
              python manage.py collectstatic --no-input &&
              gunicorn config.wsgi:application --bind 0.0.0.0:8002 --workers ${GUNICORN_WORKERS:-3}"
     depends_on:
-      - donor-db
-      - redis
+      donor-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - bden_network
 
@@ -174,8 +215,10 @@ services:
       REDIS_CACHE_URL: ${REDIS_CACHE_URL:-redis://redis:6379/1}
     command: python manage.py consume_events
     depends_on:
-      - donor-db
-      - redis
+      donor-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - bden_network
 
@@ -205,8 +248,10 @@ services:
              python manage.py collectstatic --no-input &&
              gunicorn config.wsgi:application --bind 0.0.0.0:8003 --workers ${GUNICORN_WORKERS:-3}"
     depends_on:
-      - request-db
-      - redis
+      request-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - bden_network
 
@@ -230,8 +275,10 @@ services:
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
     command: python manage.py consume_events
     depends_on:
-      - request-db
-      - redis
+      request-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - bden_network
 
@@ -261,8 +308,10 @@ services:
              python manage.py collectstatic --no-input &&
              gunicorn config.wsgi:application --bind 0.0.0.0:8004 --workers ${GUNICORN_WORKERS:-3}"
     depends_on:
-      - campaign-db
-      - redis
+      campaign-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - bden_network
 
@@ -290,8 +339,10 @@ services:
              python manage.py collectstatic --no-input &&
              gunicorn config.wsgi:application --bind 0.0.0.0:8005 --workers ${GUNICORN_WORKERS:-3}"
     depends_on:
-      - notification-db
-      - redis
+      notification-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - bden_network
 
@@ -315,8 +366,10 @@ services:
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
     command: python manage.py consume_events
     depends_on:
-      - notification-db
-      - redis
+      notification-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - bden_network
 
