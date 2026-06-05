@@ -28,6 +28,7 @@ pipeline {
         PROD_ENV_FILE = '.env.prod'
         BDEN_GATEWAY_HOST_PORT = '8080'
         BDEN_FRONTEND_HOST_PORT = '8088'
+        BDEN_PUBLIC_HOST = 'bden.hinkaku.tech'
         VITE_API_BASE_URL = 'http://localhost:8000'
         PORT_PREFIX = '1'
         BDEN_BUILD_NETWORK = 'host'
@@ -177,7 +178,7 @@ pipeline {
                         url="$2"
 
                         for attempt in $(seq 1 30); do
-                            if curl -fsS --max-time 5 "$url"; then
+                            if curl -fsS --max-time 5 -H "Host: ${BDEN_PUBLIC_HOST}" "$url"; then
                                 echo "${name} health check passed"
                                 return 0
                             fi

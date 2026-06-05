@@ -138,7 +138,7 @@ services:
       DJANGO_SETTINGS_MODULE: config.settings.prod
       DEBUG: "False"
       SECURE_SSL_REDIRECT: "False"
-      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS},localhost,127.0.0.1,bden.hinkaku.tech
       FRONTEND_URL: ${FRONTEND_URL}
       AUTH_SECRET_KEY: ${AUTH_SECRET_KEY}
       AUTH_DB_NAME: ${AUTH_DB_NAME}
@@ -177,7 +177,7 @@ services:
       DJANGO_SETTINGS_MODULE: config.settings.prod
       DEBUG: "False"
       SECURE_SSL_REDIRECT: "False"
-      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS},localhost,127.0.0.1,bden.hinkaku.tech
       FRONTEND_URL: ${FRONTEND_URL}
       AUTH_SECRET_KEY: ${AUTH_SECRET_KEY}
       DONOR_SECRET_KEY: ${DONOR_SECRET_KEY}
@@ -216,7 +216,7 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.prod
       DEBUG: "False"
-      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS},localhost,127.0.0.1,bden.hinkaku.tech
       AUTH_SECRET_KEY: ${AUTH_SECRET_KEY}
       DONOR_SECRET_KEY: ${DONOR_SECRET_KEY}
       DONOR_DB_NAME: ${DONOR_DB_NAME}
@@ -244,7 +244,7 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.prod
       DEBUG: "False"
-      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS},localhost,127.0.0.1,bden.hinkaku.tech
       FRONTEND_URL: ${FRONTEND_URL}
       AUTH_SECRET_KEY: ${AUTH_SECRET_KEY}
       REQUEST_SECRET_KEY: ${REQUEST_SECRET_KEY}
@@ -278,7 +278,7 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.prod
       DEBUG: "False"
-      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS},localhost,127.0.0.1,bden.hinkaku.tech
       AUTH_SECRET_KEY: ${AUTH_SECRET_KEY}
       REQUEST_SECRET_KEY: ${REQUEST_SECRET_KEY}
       REQUEST_DB_NAME: ${REQUEST_DB_NAME}
@@ -306,7 +306,7 @@ services:
       DJANGO_SETTINGS_MODULE: config.settings.prod
       DEBUG: "False"
       SECURE_SSL_REDIRECT: "False"
-      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS},localhost,127.0.0.1,bden.hinkaku.tech
       FRONTEND_URL: ${FRONTEND_URL}
       AUTH_SECRET_KEY: ${AUTH_SECRET_KEY}
       CAMPAIGN_SECRET_KEY: ${CAMPAIGN_SECRET_KEY}
@@ -339,7 +339,7 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.prod
       DEBUG: "False"
-      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS},localhost,127.0.0.1,bden.hinkaku.tech
       FRONTEND_URL: ${FRONTEND_URL}
       AUTH_SECRET_KEY: ${AUTH_SECRET_KEY}
       NOTIFICATION_SECRET_KEY: ${NOTIFICATION_SECRET_KEY}
@@ -371,7 +371,7 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.prod
       DEBUG: "False"
-      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS},localhost,127.0.0.1,bden.hinkaku.tech
       AUTH_SECRET_KEY: ${AUTH_SECRET_KEY}
       NOTIFICATION_SECRET_KEY: ${NOTIFICATION_SECRET_KEY}
       NOTIFICATION_DB_NAME: ${NOTIFICATION_DB_NAME}
