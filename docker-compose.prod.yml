@@ -26,6 +26,8 @@ services:
       timeout: 5s
       retries: 20
       start_period: 10s
+    ports:
+      - "127.0.0.1:${AUTH_DB_HOST_PORT:-15432}:5432"
     volumes:
       - auth_db_data:/var/lib/postgresql/data
     networks:
@@ -44,6 +46,8 @@ services:
       timeout: 5s
       retries: 20
       start_period: 10s
+    ports:
+      - "127.0.0.1:${DONOR_DB_HOST_PORT:-15433}:5432"
     volumes:
       - donor_db_data:/var/lib/postgresql/data
     networks:
@@ -62,6 +66,8 @@ services:
       timeout: 5s
       retries: 20
       start_period: 10s
+    ports:
+      - "127.0.0.1:${REQUEST_DB_HOST_PORT:-15434}:5432"
     volumes:
       - request_db_data:/var/lib/postgresql/data
     networks:
@@ -80,6 +86,8 @@ services:
       timeout: 5s
       retries: 20
       start_period: 10s
+    ports:
+      - "127.0.0.1:${CAMPAIGN_DB_HOST_PORT:-15435}:5432"
     volumes:
       - campaign_db_data:/var/lib/postgresql/data
     networks:
@@ -98,6 +106,8 @@ services:
       timeout: 5s
       retries: 20
       start_period: 10s
+    ports:
+      - "127.0.0.1:${NOTIFICATION_DB_HOST_PORT:-15436}:5432"
     volumes:
       - notification_db_data:/var/lib/postgresql/data
     networks:
@@ -112,6 +122,8 @@ services:
       timeout: 5s
       retries: 20
       start_period: 5s
+    ports:
+      - "127.0.0.1:${REDIS_HOST_PORT:-16379}:6379"
     volumes:
       - redis_data:/data
     networks:
@@ -132,16 +144,16 @@ services:
       AUTH_DB_NAME: ${AUTH_DB_NAME}
       AUTH_DB_USER: ${AUTH_DB_USER}
       AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD}
-      AUTH_DB_HOST: auth-db
-      AUTH_DB_PORT: 5432
-      DONOR_SERVICE_INTERNAL_URL: http://donor-service:8002
+      AUTH_DB_HOST: 127.0.0.1
+      AUTH_DB_PORT: ${AUTH_DB_HOST_PORT:-15432}
+      DONOR_SERVICE_INTERNAL_URL: http://127.0.0.1:8002
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      REDIS_URL: redis://127.0.0.1:${REDIS_HOST_PORT:-16379}/0
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
       GOOGLE_AUTH_FRONTEND_CALLBACK_URL: ${GOOGLE_AUTH_FRONTEND_CALLBACK_URL:-}
-      WAIT_FOR_HOSTS: auth-db:5432,redis:6379
+      WAIT_FOR_HOSTS: 127.0.0.1:${AUTH_DB_HOST_PORT:-15432},127.0.0.1:${REDIS_HOST_PORT:-16379}
     command: >
       sh -c "python wait_for.py &&
              python manage.py migrate &&
@@ -154,8 +166,7 @@ services:
         condition: service_started
       redis:
         condition: service_healthy
-    networks:
-      - bden_network
+    network_mode: host
 
   donor-service:
     build:
@@ -173,18 +184,18 @@ services:
       DONOR_DB_NAME: ${DONOR_DB_NAME}
       DONOR_DB_USER: ${DONOR_DB_USER}
       DONOR_DB_PASSWORD: ${DONOR_DB_PASSWORD}
-      DONOR_DB_HOST: donor-db
-      DONOR_DB_PORT: 5432
+      DONOR_DB_HOST: 127.0.0.1
+      DONOR_DB_PORT: ${DONOR_DB_HOST_PORT:-15433}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-      REDIS_CACHE_URL: ${REDIS_CACHE_URL:-redis://redis:6379/1}
-      AUTH_SERVICE_INTERNAL_URL: http://auth-service:8001
-      REQUEST_SERVICE_INTERNAL_URL: http://request-service:8003
+      REDIS_URL: redis://127.0.0.1:${REDIS_HOST_PORT:-16379}/0
+      REDIS_CACHE_URL: redis://127.0.0.1:${REDIS_HOST_PORT:-16379}/1
+      AUTH_SERVICE_INTERNAL_URL: http://127.0.0.1:8001
+      REQUEST_SERVICE_INTERNAL_URL: http://127.0.0.1:8003
       DEFAULT_MATCHING_RADIUS_KM: ${DEFAULT_MATCHING_RADIUS_KM:-30}
       MAX_MATCHING_RADIUS_KM: ${MAX_MATCHING_RADIUS_KM:-100}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL_NAME: ${GEMINI_MODEL_NAME:-gemini-1.5-flash}
-      WAIT_FOR_HOSTS: donor-db:5432,redis:6379
+      WAIT_FOR_HOSTS: 127.0.0.1:${DONOR_DB_HOST_PORT:-15433},127.0.0.1:${REDIS_HOST_PORT:-16379}
     command: >
       sh -c "python wait_for.py &&
              python manage.py migrate &&
@@ -195,8 +206,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    networks:
-      - bden_network
+    network_mode: host
 
   donor-event-consumer:
     build:
@@ -212,20 +222,19 @@ services:
       DONOR_DB_NAME: ${DONOR_DB_NAME}
       DONOR_DB_USER: ${DONOR_DB_USER}
       DONOR_DB_PASSWORD: ${DONOR_DB_PASSWORD}
-      DONOR_DB_HOST: donor-db
-      DONOR_DB_PORT: 5432
+      DONOR_DB_HOST: 127.0.0.1
+      DONOR_DB_PORT: ${DONOR_DB_HOST_PORT:-15433}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-      REDIS_CACHE_URL: ${REDIS_CACHE_URL:-redis://redis:6379/1}
-      WAIT_FOR_HOSTS: donor-db:5432,redis:6379
+      REDIS_URL: redis://127.0.0.1:${REDIS_HOST_PORT:-16379}/0
+      REDIS_CACHE_URL: redis://127.0.0.1:${REDIS_HOST_PORT:-16379}/1
+      WAIT_FOR_HOSTS: 127.0.0.1:${DONOR_DB_HOST_PORT:-15433},127.0.0.1:${REDIS_HOST_PORT:-16379}
     command: sh -c "python wait_for.py && python manage.py consume_events"
     depends_on:
       donor-db:
         condition: service_healthy
       redis:
         condition: service_healthy
-    networks:
-      - bden_network
+    network_mode: host
 
   request-service:
     build:
@@ -242,13 +251,13 @@ services:
       REQUEST_DB_NAME: ${REQUEST_DB_NAME}
       REQUEST_DB_USER: ${REQUEST_DB_USER}
       REQUEST_DB_PASSWORD: ${REQUEST_DB_PASSWORD}
-      REQUEST_DB_HOST: request-db
-      REQUEST_DB_PORT: 5432
+      REQUEST_DB_HOST: 127.0.0.1
+      REQUEST_DB_PORT: ${REQUEST_DB_HOST_PORT:-15434}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-      DONOR_SERVICE_URL: http://donor-service:8002
-      NOTIFICATION_SERVICE_URL: http://notification-service:8005
-      WAIT_FOR_HOSTS: request-db:5432,redis:6379
+      REDIS_URL: redis://127.0.0.1:${REDIS_HOST_PORT:-16379}/0
+      DONOR_SERVICE_URL: http://127.0.0.1:8002
+      NOTIFICATION_SERVICE_URL: http://127.0.0.1:8005
+      WAIT_FOR_HOSTS: 127.0.0.1:${REQUEST_DB_HOST_PORT:-15434},127.0.0.1:${REDIS_HOST_PORT:-16379}
     command: >
       sh -c "python wait_for.py &&
              python manage.py migrate &&
@@ -259,8 +268,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    networks:
-      - bden_network
+    network_mode: host
 
   request-event-consumer:
     build:
@@ -276,19 +284,18 @@ services:
       REQUEST_DB_NAME: ${REQUEST_DB_NAME}
       REQUEST_DB_USER: ${REQUEST_DB_USER}
       REQUEST_DB_PASSWORD: ${REQUEST_DB_PASSWORD}
-      REQUEST_DB_HOST: request-db
-      REQUEST_DB_PORT: 5432
+      REQUEST_DB_HOST: 127.0.0.1
+      REQUEST_DB_PORT: ${REQUEST_DB_HOST_PORT:-15434}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-      WAIT_FOR_HOSTS: request-db:5432,redis:6379
+      REDIS_URL: redis://127.0.0.1:${REDIS_HOST_PORT:-16379}/0
+      WAIT_FOR_HOSTS: 127.0.0.1:${REQUEST_DB_HOST_PORT:-15434},127.0.0.1:${REDIS_HOST_PORT:-16379}
     command: sh -c "python wait_for.py && python manage.py consume_events"
     depends_on:
       request-db:
         condition: service_healthy
       redis:
         condition: service_healthy
-    networks:
-      - bden_network
+    network_mode: host
 
   campaign-service:
     build:
@@ -306,12 +313,12 @@ services:
       CAMPAIGN_DB_NAME: ${CAMPAIGN_DB_NAME}
       CAMPAIGN_DB_USER: ${CAMPAIGN_DB_USER}
       CAMPAIGN_DB_PASSWORD: ${CAMPAIGN_DB_PASSWORD}
-      CAMPAIGN_DB_HOST: campaign-db
-      CAMPAIGN_DB_PORT: 5432
+      CAMPAIGN_DB_HOST: 127.0.0.1
+      CAMPAIGN_DB_PORT: ${CAMPAIGN_DB_HOST_PORT:-15435}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-      DONOR_SERVICE_INTERNAL_URL: http://donor-service:8002
-      WAIT_FOR_HOSTS: campaign-db:5432,redis:6379
+      REDIS_URL: redis://127.0.0.1:${REDIS_HOST_PORT:-16379}/0
+      DONOR_SERVICE_INTERNAL_URL: http://127.0.0.1:8002
+      WAIT_FOR_HOSTS: 127.0.0.1:${CAMPAIGN_DB_HOST_PORT:-15435},127.0.0.1:${REDIS_HOST_PORT:-16379}
     command: >
       sh -c "python wait_for.py &&
              python manage.py migrate &&
@@ -322,8 +329,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    networks:
-      - bden_network
+    network_mode: host
 
   notification-service:
     build:
@@ -340,11 +346,11 @@ services:
       NOTIFICATION_DB_NAME: ${NOTIFICATION_DB_NAME}
       NOTIFICATION_DB_USER: ${NOTIFICATION_DB_USER}
       NOTIFICATION_DB_PASSWORD: ${NOTIFICATION_DB_PASSWORD}
-      NOTIFICATION_DB_HOST: notification-db
-      NOTIFICATION_DB_PORT: 5432
+      NOTIFICATION_DB_HOST: 127.0.0.1
+      NOTIFICATION_DB_PORT: ${NOTIFICATION_DB_HOST_PORT:-15436}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-      WAIT_FOR_HOSTS: notification-db:5432,redis:6379
+      REDIS_URL: redis://127.0.0.1:${REDIS_HOST_PORT:-16379}/0
+      WAIT_FOR_HOSTS: 127.0.0.1:${NOTIFICATION_DB_HOST_PORT:-15436},127.0.0.1:${REDIS_HOST_PORT:-16379}
     command: >
       sh -c "python wait_for.py &&
              python manage.py migrate &&
@@ -355,8 +361,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    networks:
-      - bden_network
+    network_mode: host
 
   notification-event-consumer:
     build:
@@ -372,35 +377,33 @@ services:
       NOTIFICATION_DB_NAME: ${NOTIFICATION_DB_NAME}
       NOTIFICATION_DB_USER: ${NOTIFICATION_DB_USER}
       NOTIFICATION_DB_PASSWORD: ${NOTIFICATION_DB_PASSWORD}
-      NOTIFICATION_DB_HOST: notification-db
-      NOTIFICATION_DB_PORT: 5432
+      NOTIFICATION_DB_HOST: 127.0.0.1
+      NOTIFICATION_DB_PORT: ${NOTIFICATION_DB_HOST_PORT:-15436}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-      WAIT_FOR_HOSTS: notification-db:5432,redis:6379
+      REDIS_URL: redis://127.0.0.1:${REDIS_HOST_PORT:-16379}/0
+      WAIT_FOR_HOSTS: 127.0.0.1:${NOTIFICATION_DB_HOST_PORT:-15436},127.0.0.1:${REDIS_HOST_PORT:-16379}
     command: sh -c "python wait_for.py && python manage.py consume_events"
     depends_on:
       notification-db:
         condition: service_healthy
       redis:
         condition: service_healthy
-    networks:
-      - bden_network
+    network_mode: host
 
   gateway:
     build:
       context: ./infrastructure/nginx
       network: ${BDEN_BUILD_NETWORK:-default}
     restart: unless-stopped
-    ports:
-      - "127.0.0.1:${BDEN_GATEWAY_HOST_PORT:-8080}:80"
+    volumes:
+      - ./infrastructure/nginx/nginx.host.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - auth-service
       - donor-service
       - request-service
       - campaign-service
       - notification-service
-    networks:
-      - bden_network
+    network_mode: host
 
 volumes:
   auth_db_data:
