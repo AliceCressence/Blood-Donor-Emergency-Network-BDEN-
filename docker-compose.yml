@@ -5,6 +5,12 @@ services:
       POSTGRES_DB: ${AUTH_DB_NAME:-bden_auth}
       POSTGRES_USER: ${AUTH_DB_USER:-bden_user}
       POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD:-bden_password}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
     ports:
       - "${AUTH_DB_HOST_PORT:-15432}:5432"
     volumes:
@@ -18,6 +24,12 @@ services:
       POSTGRES_DB: ${DONOR_DB_NAME:-bden_donor}
       POSTGRES_USER: ${DONOR_DB_USER:-bden_user}
       POSTGRES_PASSWORD: ${DONOR_DB_PASSWORD:-bden_password}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
     ports:
       - "${DONOR_DB_HOST_PORT:-15433}:5432"
     volumes:
@@ -31,6 +43,12 @@ services:
       POSTGRES_DB: ${REQUEST_DB_NAME:-bden_request}
       POSTGRES_USER: ${REQUEST_DB_USER:-bden_user}
       POSTGRES_PASSWORD: ${REQUEST_DB_PASSWORD:-bden_password}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
     ports:
       - "${REQUEST_DB_HOST_PORT:-15434}:5432"
     volumes:
@@ -44,6 +62,12 @@ services:
       POSTGRES_DB: ${CAMPAIGN_DB_NAME:-bden_campaign}
       POSTGRES_USER: ${CAMPAIGN_DB_USER:-bden_user}
       POSTGRES_PASSWORD: ${CAMPAIGN_DB_PASSWORD:-bden_password}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
     ports:
       - "${CAMPAIGN_DB_HOST_PORT:-15435}:5432"
     volumes:
@@ -57,6 +81,12 @@ services:
       POSTGRES_DB: ${NOTIFICATION_DB_NAME:-bden_notification}
       POSTGRES_USER: ${NOTIFICATION_DB_USER:-bden_user}
       POSTGRES_PASSWORD: ${NOTIFICATION_DB_PASSWORD:-bden_password}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
     ports:
       - "${NOTIFICATION_DB_HOST_PORT:-15436}:5432"
     volumes:
@@ -66,6 +96,12 @@ services:
 
   redis:
     image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
     ports:
       - "${REDIS_HOST_PORT:-16379}:6379"
     volumes:
