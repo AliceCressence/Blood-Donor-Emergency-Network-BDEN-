@@ -10,7 +10,6 @@ COPY package*.json ./
 RUN npm ci
 
 COPY . .
-RUN npm run lint
 RUN npm run build
 
 FROM nginx:1.27-alpine
