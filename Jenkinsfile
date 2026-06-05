@@ -16,7 +16,7 @@ pipeline {
         )
         booleanParam(
             name: 'DEPLOY_ONLY',
-            defaultValue: true,
+            defaultValue: false,
             description: 'Skip CI checks/tests and only run production build/deploy. Use for manual deploy retries after CI has already passed.'
         )
     }
