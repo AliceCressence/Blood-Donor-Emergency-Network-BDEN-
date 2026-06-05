@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: bden-prod
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: bden-monitoring

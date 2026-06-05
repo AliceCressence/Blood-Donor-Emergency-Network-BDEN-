@@ -15,7 +15,8 @@ git push / PR merge to main
   → GitHub Webhook
   → Jenkins (native, port 8090)
   → Run checks/tests → Build frontend → Build Docker images on VPS
-  → Deploy Docker Compose production stack (bden-prod project)
+  → Push images to local VPS registry
+  → Deploy Kubernetes/k3s production stack
   → Health check passes
 ```
 
@@ -544,32 +545,19 @@ kubectl get namespaces
 
 ### 6.6 — Create Kubernetes Secrets
 
-These are the same values as your `.env` file but stored securely inside the Kubernetes cluster. Pods read from these secrets — they never see the `.env` file directly. Replace every `<value>` with the actual secret.
+Jenkins creates the production Kubernetes secret automatically from `/var/www/bden/.env.prod`. If you need to create it manually, use the same file.
 
 ```bash
-kubectl create secret generic bden-secrets \
+kubectl create secret generic bden-env \
   --namespace=bden-prod \
-  --from-literal=AUTH_SECRET_KEY='<your-auth-secret-key>' \
-  --from-literal=DONOR_SECRET_KEY='<your-donor-secret-key>' \
-  --from-literal=REQUEST_SECRET_KEY='<your-request-secret-key>' \
-  --from-literal=CAMPAIGN_SECRET_KEY='<your-campaign-secret-key>' \
-  --from-literal=NOTIFICATION_SECRET_KEY='<your-notification-secret-key>' \
-  --from-literal=AUTH_DB_PASSWORD='<your-db-password>' \
-  --from-literal=DONOR_DB_PASSWORD='<your-db-password>' \
-  --from-literal=REQUEST_DB_PASSWORD='<your-db-password>' \
-  --from-literal=CAMPAIGN_DB_PASSWORD='<your-db-password>' \
-  --from-literal=NOTIFICATION_DB_PASSWORD='<your-db-password>' \
-  --from-literal=INTERNAL_API_KEY='<your-internal-api-key>' \
-  --from-literal=GOOGLE_CLIENT_ID='<your-google-client-id>' \
-  --from-literal=GOOGLE_CLIENT_SECRET='<your-google-client-secret>' \
-  --from-literal=GEMINI_API_KEY='<placeholder>' \
-  --from-literal=EMAIL_HOST_PASSWORD='<your-gmail-app-password>'
+  --from-env-file=/var/www/bden/.env.prod \
+  --dry-run=client -o yaml | kubectl apply -f -
 ```
 
 ✅ **CHECK:**
 ```bash
 kubectl get secrets -n bden-prod
-# Expected: bden-secrets   Opaque   15   ...
+# Expected: bden-env   Opaque   ...
 ```
 
 ### 6.7 — Install Helm
@@ -634,38 +622,8 @@ server {
 
     client_max_body_size 20M;
 
-    location /api/ {
-        proxy_pass http://127.0.0.1:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_read_timeout 60s;
-        proxy_connect_timeout 10s;
-    }
-
-    location /health/ {
-        proxy_pass http://127.0.0.1:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_read_timeout 60s;
-        proxy_connect_timeout 10s;
-    }
-
-    location /django-admin/ {
-        proxy_pass http://127.0.0.1:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_read_timeout 60s;
-        proxy_connect_timeout 10s;
-    }
-
     location / {
-        proxy_pass http://127.0.0.1:8088;
+        proxy_pass http://127.0.0.1:30080;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -864,14 +822,8 @@ sudo tee /opt/bitnami/apache/conf/vhosts/bden-vhost.conf > /dev/null << 'EOF'
 <VirtualHost *:80>
     ServerName bden.hinkaku.tech
     ProxyPreserveHost On
-    ProxyPass /api/ http://127.0.0.1:8080/api/
-    ProxyPassReverse /api/ http://127.0.0.1:8080/api/
-    ProxyPass /health/ http://127.0.0.1:8080/health/
-    ProxyPassReverse /health/ http://127.0.0.1:8080/health/
-    ProxyPass /django-admin/ http://127.0.0.1:8080/django-admin/
-    ProxyPassReverse /django-admin/ http://127.0.0.1:8080/django-admin/
-    ProxyPass / http://127.0.0.1:8088/
-    ProxyPassReverse / http://127.0.0.1:8088/
+    ProxyPass / http://127.0.0.1:30080/
+    ProxyPassReverse / http://127.0.0.1:30080/
 </VirtualHost>
 
 <VirtualHost *:80>
@@ -901,14 +853,8 @@ sudo tee /opt/bitnami/apache/conf/vhosts/bden-https-vhost.conf > /dev/null << 'E
     SSLCertificateKeyFile "/opt/bitnami/apache/conf/bitnami/certs/server.key"
     ProxyPreserveHost On
     RequestHeader set X-Forwarded-Proto "https"
-    ProxyPass /api/ http://127.0.0.1:8080/api/
-    ProxyPassReverse /api/ http://127.0.0.1:8080/api/
-    ProxyPass /health/ http://127.0.0.1:8080/health/
-    ProxyPassReverse /health/ http://127.0.0.1:8080/health/
-    ProxyPass /django-admin/ http://127.0.0.1:8080/django-admin/
-    ProxyPassReverse /django-admin/ http://127.0.0.1:8080/django-admin/
-    ProxyPass / http://127.0.0.1:8088/
-    ProxyPassReverse / http://127.0.0.1:8088/
+    ProxyPass / http://127.0.0.1:30080/
+    ProxyPassReverse / http://127.0.0.1:30080/
 </VirtualHost>
 
 <VirtualHost *:443>
@@ -1206,16 +1152,16 @@ You should see a ping event with response code `200`.
 
 ## Section 11 — The Jenkinsfile
 
-The repository now contains a production-aware `Jenkinsfile`. It no longer treats Kubernetes as the active deployment target. Kubernetes/k3s remains the future orchestration path, but the current production pipeline deploys the working Docker Compose production stack directly on the VPS.
+The repository now contains a production-aware `Jenkinsfile` that deploys BDEN to k3s. Docker Compose is still used to build images and for local/fallback operations, but the active production runtime is Kubernetes.
 
 ### 11.1 — What the current Jenkinsfile does
 
 The pipeline has two separate paths:
 
-| Path | Runs on | Compose file | Env file | Purpose |
-|------|---------|--------------|----------|---------|
+| Path | Runs on | Uses | Env file | Purpose |
+|------|---------|------|----------|---------|
 | CI | branches and PRs | `docker-compose.yml` | `.env.example` | checks, tests, frontend build |
-| Production | `main` only | `docker-compose.prod.yml` | `.env.prod` | build and deploy VPS stack |
+| Production | `main` only | `docker-compose.prod.yml` + `infrastructure/k8s/` | `.env.prod` | build images and deploy to k3s |
 
 Pipeline stages in order:
 
@@ -1228,17 +1174,21 @@ Pipeline stages in order:
 | 5 | Django Tests | Runs `pytest` for auth, donor, request, campaign, and notification services |
 | 6 | Frontend Build | Builds the production frontend image and runs `npm run build` inside the Docker build |
 | 7 | Build Production Images | Builds prod images on `main` and PRs targeting `main` |
-| 8 | Deploy Production | Runs only on `main` when `DEPLOY_PROD=true` |
+| 8 | Deploy Production to Kubernetes | Runs only on `main` when `DEPLOY_PROD=true` |
 
 The deploy stage:
 
 1. verifies `.env.prod` exists;
 2. validates `docker-compose.prod.yml` with `.env.prod`;
 3. builds production images;
-4. starts the stack with `docker compose up -d --remove-orphans`;
-5. checks frontend and backend health endpoints.
+4. starts/uses the local registry at `127.0.0.1:5000`;
+5. tags and pushes BDEN images to `localhost:5000/bden/*`;
+6. creates/updates the Kubernetes secret `bden-env` from `.env.prod`;
+7. applies `infrastructure/k8s/*.yaml`;
+8. waits for StatefulSets and Deployments to roll out;
+9. checks every service through the k3s gateway NodePort `30080`.
 
-The Jenkins cleanup step only stops the CI Compose project, `bden-ci`. It does **not** stop the production project, `bden-prod`.
+The Jenkins cleanup step only stops the CI Compose project, `bden-ci`. It does **not** stop Kubernetes production resources.
 
 ### 11.2 — Required Jenkins job parameter
 
@@ -1248,7 +1198,7 @@ Create or confirm this Jenkins build parameter:
 |------|------|---------|---------|
 | `DEPLOY_PROD` | Boolean | `true` | Allows deployment when the build runs on `main` |
 
-For local Jenkins experiments, set `DEPLOY_PROD=false` unless you deliberately want to test production Compose locally.
+For local Jenkins experiments, set `DEPLOY_PROD=false` unless you deliberately want to deploy to the VPS k3s cluster.
 
 ### 11.3 — Required `.env.prod` file
 
@@ -1286,10 +1236,13 @@ Expected behavior: no output and exit code `0`.
 
 ### 11.5 — Jenkins and Docker permissions
 
-Native Jenkins must be able to run Docker:
+Native Jenkins must be able to run Docker and kubectl:
 
 ```bash
 sudo usermod -aG docker jenkins
+sudo mkdir -p /var/lib/jenkins/.kube
+sudo cp /etc/rancher/k3s/k3s.yaml /var/lib/jenkins/.kube/config
+sudo chown -R jenkins:jenkins /var/lib/jenkins/.kube
 sudo systemctl restart jenkins
 ```
 
@@ -1297,41 +1250,77 @@ Verify as the Jenkins user:
 
 ```bash
 sudo -u jenkins docker ps
+sudo -u jenkins kubectl get nodes
 ```
 
-Expected behavior: Docker lists containers or an empty table without permission errors.
+Expected behavior: Docker lists containers or an empty table without permission errors, and kubectl shows the k3s node as `Ready`.
+
+### 11.6 — Local registry for k3s image pulls
+
+Jenkins builds images locally on the VPS. k3s must then be able to pull those images. The pipeline starts a local registry container on `127.0.0.1:5000` and pushes images to:
+
+```text
+localhost:5000/bden/frontend:latest
+localhost:5000/bden/auth-service:latest
+localhost:5000/bden/donor-service:latest
+localhost:5000/bden/request-service:latest
+localhost:5000/bden/campaign-service:latest
+localhost:5000/bden/notification-service:latest
+```
+
+If Jenkins has passwordless sudo, it will also configure `/etc/rancher/k3s/registries.yaml` automatically. If not, run this once on the VPS:
+
+```bash
+sudo mkdir -p /etc/rancher/k3s
+sudo tee /etc/rancher/k3s/registries.yaml >/dev/null <<'EOF'
+mirrors:
+  "localhost:5000":
+    endpoint:
+      - "http://127.0.0.1:5000"
+EOF
+
+sudo systemctl restart k3s
+kubectl wait --for=condition=Ready node --all --timeout=180s
+```
+
+Optional, but useful if you want Jenkins to update host Nginx automatically:
+
+```bash
+sudo visudo
+```
+
+Add:
+
+```text
+jenkins ALL=(root) NOPASSWD: /bin/cp, /bin/ln, /usr/sbin/nginx, /bin/systemctl, /bin/mkdir, /bin/grep, /usr/bin/tee
+```
 
 ---
 
-## Section 12 — Docker Compose — Production Stack
+## Section 12 — Production Build and Kubernetes Runtime
 
-The production stack now uses a standalone file: `docker-compose.prod.yml`.
+The production pipeline now uses two pieces together:
 
-This is intentionally separate from `docker-compose.yml`:
+- `docker-compose.prod.yml` builds production images locally on the VPS.
+- `infrastructure/k8s/*.yaml` runs the actual production stack in k3s.
 
-- `docker-compose.yml` is local-development friendly and exposes service/database ports.
-- `docker-compose.prod.yml` is production-focused and exposes only loopback ports for host Nginx.
-- Jenkins uses `docker-compose.prod.yml` for production deploys.
-- Native Jenkins runs outside the app stack; do not deploy Jenkins from BDEN Compose in production.
+Docker Compose remains useful as a fallback, but Kubernetes is now the production runtime.
 
 ### 12.1 — Production ports
 
-The production Compose stack exposes only these host ports:
+The active k3s deployment exposes BDEN through one NodePort:
 
 | Host address | Purpose |
 |--------------|---------|
-| `127.0.0.1:8088` | React frontend container |
-| `127.0.0.1:8080` | Backend API gateway container |
+| `127.0.0.1:30080` | BDEN Kubernetes gateway |
+| `127.0.0.1:5000` | local registry used by Jenkins and k3s |
 
 Host Nginx remains the public entry point on ports `80` and `443`.
 
 Recommended host Nginx routing:
 
 ```text
-/              -> http://127.0.0.1:8088
-/api/          -> http://127.0.0.1:8080
-/health/       -> http://127.0.0.1:8080
-/django-admin/ -> http://127.0.0.1:8080
+/ -> http://127.0.0.1:30080
 ```
 
 ### 12.2 — Production files now expected in the repo
@@ -1342,6 +1331,12 @@ These files should exist after pulling the latest `main`:
 Jenkinsfile
 docker-compose.prod.yml
 .env.prod.example
+infrastructure/k8s/namespace.yaml
+infrastructure/k8s/data-services.yaml
+infrastructure/k8s/app-services.yaml
+infrastructure/k8s/event-consumers.yaml
+infrastructure/k8s/frontend-gateway.yaml
+infrastructure/nginx/bden.host.k8s.conf
 frontend/Dockerfile
 frontend/nginx.conf
 frontend/.dockerignore
@@ -1352,7 +1347,7 @@ Check:
 ```bash
 cd /var/www/bden
 git pull origin main
-ls Jenkinsfile docker-compose.prod.yml .env.prod.example frontend/Dockerfile frontend/nginx.conf
+ls Jenkinsfile docker-compose.prod.yml .env.prod.example infrastructure/k8s/frontend-gateway.yaml infrastructure/nginx/bden.host.k8s.conf
 ```
 
 ### 12.3 — Create the production environment file
@@ -1403,63 +1398,73 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod conf
 
 Expected behavior: no output and exit code `0`.
 
-### 12.5 — First-time startup on VPS
-
-Start the production stack:
+### 12.5 — Build production images manually
 
 ```bash
 cd /var/www/bden
-docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod up -d --build
+docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod build
 ```
 
-The service containers run migrations and `collectstatic` during startup.
+This is the same image build step Jenkins performs before pushing images to `localhost:5000`.
 
-Seed donor screening centers after the first startup:
+### 12.6 — Apply Kubernetes manually
 
 ```bash
-docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod \
-  exec donor-service python manage.py seed_screening_centers
+cd /var/www/bden
+
+docker run -d \
+  --restart unless-stopped \
+  --name bden-local-registry \
+  -p 127.0.0.1:5000:5000 \
+  registry:2 2>/dev/null || docker start bden-local-registry
+
+docker tag bden-prod-frontend:latest localhost:5000/bden/frontend:latest
+docker tag bden-prod-auth-service:latest localhost:5000/bden/auth-service:latest
+docker tag bden-prod-donor-service:latest localhost:5000/bden/donor-service:latest
+docker tag bden-prod-request-service:latest localhost:5000/bden/request-service:latest
+docker tag bden-prod-campaign-service:latest localhost:5000/bden/campaign-service:latest
+docker tag bden-prod-notification-service:latest localhost:5000/bden/notification-service:latest
+
+docker push localhost:5000/bden/frontend:latest
+docker push localhost:5000/bden/auth-service:latest
+docker push localhost:5000/bden/donor-service:latest
+docker push localhost:5000/bden/request-service:latest
+docker push localhost:5000/bden/campaign-service:latest
+docker push localhost:5000/bden/notification-service:latest
+
+kubectl apply -f infrastructure/k8s/namespace.yaml
+kubectl create secret generic bden-env \
+  --namespace=bden-prod \
+  --from-env-file=/var/www/bden/.env.prod \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl apply -f infrastructure/k8s/
 ```
 
-Create the first Django admin user in auth-service:
+Jenkins does these steps automatically on `main`.
+
+### 12.7 — Health checks
 
 ```bash
-docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod \
-  exec auth-service python manage.py createsuperuser
-```
-
-### 12.6 — Health checks
-
-```bash
-curl -fsS http://127.0.0.1:8088/health/
-curl -fsS http://127.0.0.1:8080/health/auth/
-curl -fsS http://127.0.0.1:8080/health/donor/
-curl -fsS http://127.0.0.1:8080/health/request/
-curl -fsS http://127.0.0.1:8080/health/campaign/
-curl -fsS http://127.0.0.1:8080/health/notification/
+curl -fsS -H "Host: bden.hinkaku.tech" http://127.0.0.1:30080/health/
+curl -fsS -H "Host: bden.hinkaku.tech" http://127.0.0.1:30080/health/auth/
+curl -fsS -H "Host: bden.hinkaku.tech" http://127.0.0.1:30080/health/donor/
+curl -fsS -H "Host: bden.hinkaku.tech" http://127.0.0.1:30080/health/request/
+curl -fsS -H "Host: bden.hinkaku.tech" http://127.0.0.1:30080/health/campaign/
+curl -fsS -H "Host: bden.hinkaku.tech" http://127.0.0.1:30080/health/notification/
 ```
 
 Expected behavior: every command returns JSON with service status.
 
-### 12.7 — Useful production Compose commands
+### 12.8 — Useful Kubernetes commands
 
 ```bash
-# See status
-docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod ps
-
-# Tail logs
-docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod logs -f gateway
-
-# Restart one service
-docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod up -d --no-deps --build auth-service
-
-# Stop the production stack intentionally
-docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod down
+kubectl get pods -n bden-prod -o wide
+kubectl get svc -n bden-prod
+kubectl logs -n bden-prod deployment/auth-service --tail=100
+kubectl rollout restart deployment/auth-service -n bden-prod
+kubectl rollout status deployment/auth-service -n bden-prod --timeout=180s
 ```
-
-### 12.8 — What about k3s?
-
-k3s is still documented because it remains the planned orchestration direction. However, the active production deployment path for the current milestone is Docker Compose. Do not configure Jenkins to run `kubectl apply` until the Kubernetes manifests are finalized and tested.
 
 ---
 ## Section 13 — Prometheus and Grafana
@@ -1594,7 +1599,7 @@ Use Ansible for repeatable infrastructure once these are already working manuall
 - `/var/www/bden` contains the repository.
 - `/var/www/bden/.env.prod` exists and is secure.
 - Jenkins can deploy with `docker-compose.prod.yml`.
-- Host Nginx routes to frontend `8088` and gateway `8080`.
+- Host Nginx routes BDEN traffic to the k3s gateway NodePort `30080`.
 - Health checks pass for frontend and all five backend services.
 
 Do not make Ansible the first deployment method. First make the server work, then automate the working recipe.
@@ -1724,32 +1729,8 @@ server {
 
     client_max_body_size 20M;
 
-    location /api/ {
-        proxy_pass http://127.0.0.1:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    location /health/ {
-        proxy_pass http://127.0.0.1:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    location /django-admin/ {
-        proxy_pass http://127.0.0.1:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
     location / {
-        proxy_pass http://127.0.0.1:8088;
+        proxy_pass http://127.0.0.1:30080;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -1760,7 +1741,7 @@ server {
 
 > ⚠️ If you already use HTTPS in `/etc/nginx/sites-available/bden`, do not let Ansible overwrite it with an HTTP-only file unless you intend to re-run Certbot afterward. For a mature playbook, template both HTTP and HTTPS versions.
 
-### 14.5 — Playbook 3: Deploy the full Compose stack
+### 14.5 — Playbook 3: Deploy the full k3s stack
 
 `infrastructure/ansible/playbooks/03_deploy_services.yml`
 
@@ -1800,31 +1781,11 @@ server {
       args:
         chdir: /var/www/bden
 
-    - name: Start full production stack
+    - name: Run Kubernetes deploy script
       command: >
-        docker compose
-        --env-file /var/www/bden/.env.prod
-        -f /var/www/bden/docker-compose.prod.yml
-        -p bden-prod
-        up -d --wait --remove-orphans
+        bash /var/www/bden/scripts/deploy-prod.sh
       args:
         chdir: /var/www/bden
-
-    - name: Verify gateway health endpoints
-      uri:
-        url: "{{ item }}"
-        method: GET
-        headers:
-          Host: bden.hinkaku.tech
-        status_code: 200
-        timeout: 10
-      loop:
-        - http://127.0.0.1:8088/health/
-        - http://127.0.0.1:8080/health/auth/
-        - http://127.0.0.1:8080/health/donor/
-        - http://127.0.0.1:8080/health/request/
-        - http://127.0.0.1:8080/health/campaign/
-        - http://127.0.0.1:8080/health/notification/
 ```
 
 ### 14.6 — Run playbooks in order
@@ -1846,7 +1807,7 @@ For today’s Jenkins-first path, you can skip Section 14 entirely and return to
 
 ## Section 15 — Deploy Script
 
-This script is optional because the current `Jenkinsfile` already performs the production deploy directly. Keep it as a manual emergency deploy helper for the full Compose stack.
+This script is optional because the current `Jenkinsfile` already performs the production deploy directly. Keep it as a manual emergency deploy helper for the full k3s stack.
 
 Save to `/var/www/bden/scripts/deploy-prod.sh`:
 
@@ -1858,7 +1819,9 @@ set -e
 ENV_FILE="/var/www/bden/.env.prod"
 COMPOSE_FILE="/var/www/bden/docker-compose.prod.yml"
 PROJECT="bden-prod"
+NAMESPACE="bden-prod"
 PUBLIC_HOST="bden.hinkaku.tech"
+REGISTRY="localhost:5000"
 
 check_url() {
   name="$1"
@@ -1875,8 +1838,8 @@ check_url() {
   done
 
   echo "ERROR: ${name} health check failed after retries: ${url}" >&2
-  docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" -p "${PROJECT}" ps
-  docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" -p "${PROJECT}" logs --tail=160
+  kubectl get pods -n "${NAMESPACE}" -o wide
+  kubectl get events -n "${NAMESPACE}" --sort-by=.lastTimestamp | tail -80
   exit 1
 }
 
@@ -1898,16 +1861,63 @@ docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" -p "${PROJECT}" con
 echo "--- Building production images..."
 docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" -p "${PROJECT}" build
 
-echo "--- Starting full production stack..."
-docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" -p "${PROJECT}" up -d --wait --remove-orphans
+echo "--- Ensuring local registry exists..."
+docker run -d \
+  --restart unless-stopped \
+  --name bden-local-registry \
+  -p 127.0.0.1:5000:5000 \
+  registry:2 2>/dev/null || docker start bden-local-registry
+
+echo "--- Publishing images to local registry..."
+docker tag "${PROJECT}-frontend:latest" "${REGISTRY}/bden/frontend:latest"
+docker tag "${PROJECT}-auth-service:latest" "${REGISTRY}/bden/auth-service:latest"
+docker tag "${PROJECT}-donor-service:latest" "${REGISTRY}/bden/donor-service:latest"
+docker tag "${PROJECT}-request-service:latest" "${REGISTRY}/bden/request-service:latest"
+docker tag "${PROJECT}-campaign-service:latest" "${REGISTRY}/bden/campaign-service:latest"
+docker tag "${PROJECT}-notification-service:latest" "${REGISTRY}/bden/notification-service:latest"
+
+docker push "${REGISTRY}/bden/frontend:latest"
+docker push "${REGISTRY}/bden/auth-service:latest"
+docker push "${REGISTRY}/bden/donor-service:latest"
+docker push "${REGISTRY}/bden/request-service:latest"
+docker push "${REGISTRY}/bden/campaign-service:latest"
+docker push "${REGISTRY}/bden/notification-service:latest"
+
+echo "--- Applying Kubernetes manifests..."
+kubectl apply -f infrastructure/k8s/namespace.yaml
+kubectl create secret generic bden-env \
+  --namespace="${NAMESPACE}" \
+  --from-env-file="${ENV_FILE}" \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl apply -f infrastructure/k8s/data-services.yaml
+kubectl apply -f infrastructure/k8s/app-services.yaml
+kubectl apply -f infrastructure/k8s/event-consumers.yaml
+kubectl apply -f infrastructure/k8s/frontend-gateway.yaml
+
+kubectl rollout restart deployment/frontend -n "${NAMESPACE}"
+kubectl rollout restart deployment/auth-service -n "${NAMESPACE}"
+kubectl rollout restart deployment/donor-service -n "${NAMESPACE}"
+kubectl rollout restart deployment/request-service -n "${NAMESPACE}"
+kubectl rollout restart deployment/campaign-service -n "${NAMESPACE}"
+kubectl rollout restart deployment/notification-service -n "${NAMESPACE}"
+kubectl rollout restart deployment/gateway -n "${NAMESPACE}"
+
+kubectl rollout status deployment/frontend -n "${NAMESPACE}" --timeout=240s
+kubectl rollout status deployment/auth-service -n "${NAMESPACE}" --timeout=240s
+kubectl rollout status deployment/donor-service -n "${NAMESPACE}" --timeout=240s
+kubectl rollout status deployment/request-service -n "${NAMESPACE}" --timeout=240s
+kubectl rollout status deployment/campaign-service -n "${NAMESPACE}" --timeout=240s
+kubectl rollout status deployment/notification-service -n "${NAMESPACE}" --timeout=240s
+kubectl rollout status deployment/gateway -n "${NAMESPACE}" --timeout=240s
 
 echo "--- Verifying health..."
-check_url frontend "http://127.0.0.1:8088/health/"
-check_url auth "http://127.0.0.1:8080/health/auth/"
-check_url donor "http://127.0.0.1:8080/health/donor/"
-check_url request "http://127.0.0.1:8080/health/request/"
-check_url campaign "http://127.0.0.1:8080/health/campaign/"
-check_url notification "http://127.0.0.1:8080/health/notification/"
+check_url gateway "http://127.0.0.1:30080/health/"
+check_url auth "http://127.0.0.1:30080/health/auth/"
+check_url donor "http://127.0.0.1:30080/health/donor/"
+check_url request "http://127.0.0.1:30080/health/request/"
+check_url campaign "http://127.0.0.1:30080/health/campaign/"
+check_url notification "http://127.0.0.1:30080/health/notification/"
 
 echo "=== Deploy complete: $(date) ==="
 ```
@@ -1926,7 +1936,7 @@ bash /var/www/bden/scripts/deploy-prod.sh
 Expected behavior:
 
 ```text
-frontend health check passed
+gateway health check passed
 auth health check passed
 donor health check passed
 request health check passed
@@ -1961,9 +1971,7 @@ Developer pushes to main (or merges a PR)
 ```
 Browser → https://bden.hinkaku.tech (port 443)
   → Host Nginx terminates SSL
-  → proxy_pass to frontend/gateway loopback ports
-    → frontend: 127.0.0.1:8088
-    → gateway:  127.0.0.1:8080
+  → proxy_pass to k3s gateway NodePort: 127.0.0.1:30080
     → /api/auth/*        → auth-service:8001
     → /api/donors/*      → donor-service:8002
     → /api/requests/*    → request-service:8003
@@ -1987,10 +1995,10 @@ notification-service → consumes → creates in-app notifications
 This section describes the current production deployment target for the whole BDEN system, not only auth and donor. The active production path is:
 
 ```
-Jenkins → docker-compose.prod.yml → bden-prod containers → host Nginx → HTTPS users
+Jenkins → docker-compose.prod.yml image builds → local registry → k3s → host Nginx → HTTPS users
 ```
 
-k3s is installed and ready for the future orchestration phase, but Jenkins should not run `kubectl apply` yet. The Kubernetes manifests are not the active deployment mechanism until the full manifest set is finalized for all services, databases, event consumers, frontend, gateway, secrets, volumes, ingress, and monitoring.
+k3s is now the active production runtime. Docker Compose remains as the build/fallback path, but the public site should be served through the Kubernetes gateway NodePort `30080`.
 
 ### 19.1 — Production components that must run
 
@@ -2018,11 +2026,11 @@ The production stack must include every component below:
 ✅ **CHECK:**
 
 ```bash
-cd /var/www/bden
-docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod ps
+kubectl get pods -n bden-prod -o wide
+kubectl get svc -n bden-prod
 ```
 
-Expected behavior: every service above is `Up`, and the HTTP services are `healthy` once startup finishes.
+Expected behavior: every pod is `Running` or `Completed`, and the `gateway` service exposes NodePort `30080`.
 
 ### 19.2 — Files that control the production deployment
 
@@ -2031,30 +2039,25 @@ These are the files that matter for the current production infrastructure:
 | File | Required change? | Why |
 |------|------------------|-----|
 | `Jenkinsfile` | **Yes, keep current prod deploy flow** | It validates Compose, builds all images, starts the full `bden-prod` stack, and checks every health endpoint. |
-| `docker-compose.prod.yml` | **Yes, this is the production Compose file** | It defines all services, databases, Redis, event consumers, host-local ports, volumes, and production commands. |
+| `docker-compose.prod.yml` | **Yes, build definition/fallback** | Jenkins uses it to build production images before pushing to the local registry. |
 | `.env.prod` on VPS | **Yes, server-only file** | It supplies real secrets, DB passwords, OAuth values, host ports, and production URLs. |
 | `.env.prod.example` | **Yes, template only** | It documents the required variables for teammates without exposing secrets. |
-| `infrastructure/nginx/nginx.host.conf` | **Yes, internal gateway config** | It routes gateway traffic from host port `8080` to the five Django services on `8001`-`8005`. |
-| `/etc/nginx/sites-available/bden` on VPS | **Yes, host Nginx config** | It terminates public HTTP/HTTPS and proxies to `frontend:8088`, `gateway:8080`, Jenkins, and Grafana. |
-| `infrastructure/k8s/*` | **Not active yet** | Keep as future orchestration work; do not make Jenkins depend on it until the full system is migrated to k3s. |
+| `infrastructure/k8s/*` | **Yes, active runtime manifests** | It defines namespaces, data services, Django services, consumers, frontend, and gateway. |
+| `infrastructure/nginx/bden.host.k8s.conf` | **Yes, host Nginx reference** | It routes public BDEN traffic to `127.0.0.1:30080`. |
+| `/etc/nginx/sites-available/bden` on VPS | **Yes, host Nginx config** | It terminates public HTTP/HTTPS and proxies to the k3s gateway, Jenkins, and Grafana. |
 
 ### 19.3 — Production port model
 
-Only host Nginx should be public on `80` and `443`. Application containers bind to loopback or host-local ports:
+Only host Nginx should be public on `80` and `443`. Kubernetes exposes the app internally on the VPS:
 
 | Component | Host binding |
 |-----------|--------------|
-| Frontend | `127.0.0.1:8088` |
-| Gateway | `127.0.0.1:8080` |
-| Auth service | `127.0.0.1:8001` through host networking |
-| Donor service | `127.0.0.1:8002` through host networking |
-| Request service | `127.0.0.1:8003` through host networking |
-| Campaign service | `127.0.0.1:8004` through host networking |
-| Notification service | `127.0.0.1:8005` through host networking |
-| Databases | `127.0.0.1:15432` to `127.0.0.1:15436` |
-| Redis | `127.0.0.1:16379` |
+| BDEN gateway | `127.0.0.1:30080` |
+| Local image registry | `127.0.0.1:5000` |
+| App services | ClusterIP inside `bden-prod` namespace |
+| Databases and Redis | ClusterIP/StatefulSet inside `bden-prod` namespace |
 
-> ⚠️ Do not open `8001`-`8005`, `15432`-`15436`, or `16379` in Lightsail. They are internal to the VPS.
+> ⚠️ Do not open `30080`, `5000`, service ports, database ports, or Redis publicly in Lightsail. Host Nginx is still the only public entry point.
 
 ### 19.4 — Deploy or redeploy the full system manually
 
@@ -2064,38 +2067,39 @@ Manual deploy is useful when Jenkins is being configured or when you are debuggi
 cd /var/www/bden
 git pull origin main
 
-docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod config --quiet
-docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod build
-docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod up -d --wait --remove-orphans
+bash /var/www/bden/scripts/deploy-prod.sh
 ```
 
 ✅ **CHECK:**
 
 ```bash
-curl -fsS -H "Host: bden.hinkaku.tech" http://127.0.0.1:8088/health/
-curl -fsS -H "Host: bden.hinkaku.tech" http://127.0.0.1:8080/health/auth/
-curl -fsS -H "Host: bden.hinkaku.tech" http://127.0.0.1:8080/health/donor/
-curl -fsS -H "Host: bden.hinkaku.tech" http://127.0.0.1:8080/health/request/
-curl -fsS -H "Host: bden.hinkaku.tech" http://127.0.0.1:8080/health/campaign/
-curl -fsS -H "Host: bden.hinkaku.tech" http://127.0.0.1:8080/health/notification/
+curl -fsS -H "Host: bden.hinkaku.tech" http://127.0.0.1:30080/health/
+curl -fsS -H "Host: bden.hinkaku.tech" http://127.0.0.1:30080/health/auth/
+curl -fsS -H "Host: bden.hinkaku.tech" http://127.0.0.1:30080/health/donor/
+curl -fsS -H "Host: bden.hinkaku.tech" http://127.0.0.1:30080/health/request/
+curl -fsS -H "Host: bden.hinkaku.tech" http://127.0.0.1:30080/health/campaign/
+curl -fsS -H "Host: bden.hinkaku.tech" http://127.0.0.1:30080/health/notification/
 ```
 
 Expected behavior: each command returns JSON and exits successfully.
 
 ### 19.5 — Jenkins production deployment behavior
 
-For this milestone, Jenkins deploys the full system with Docker Compose:
+Jenkins deploys the full system to k3s:
 
 1. resolves `/var/www/bden/.env.prod`;
 2. validates `docker-compose.prod.yml`;
 3. builds the frontend, gateway, and all Django service images;
-4. recreates the production stack with `docker compose up -d --wait --remove-orphans`;
-5. checks the frontend and every service health endpoint through the gateway.
+4. pushes images to `localhost:5000/bden/*`;
+5. creates/updates `bden-env` from `.env.prod`;
+6. applies the Kubernetes manifests;
+7. waits for rollouts;
+8. checks every service health endpoint through `127.0.0.1:30080`.
 
 The deploy health checks call the gateway through `127.0.0.1`, but they send the public host header:
 
 ```bash
-curl -fsS -H "Host: bden.hinkaku.tech" http://127.0.0.1:8080/health/auth/
+curl -fsS -H "Host: bden.hinkaku.tech" http://127.0.0.1:30080/health/auth/
 ```
 
 That matters because Django validates `ALLOWED_HOSTS`. The server `.env.prod` should still include:
@@ -2104,25 +2108,9 @@ That matters because Django validates `ALLOWED_HOSTS`. The server `.env.prod` sh
 ALLOWED_HOSTS=bden.hinkaku.tech,localhost,127.0.0.1,auth-service,donor-service,request-service,campaign-service,notification-service
 ```
 
-### 19.6 — When to move this section to Kubernetes
+### 19.6 — Compose fallback
 
-Move Jenkins from Compose deploy to k3s only after these Kubernetes resources exist for the entire system:
-
-- Deployments and Services for `frontend`, `gateway`, and all five Django services.
-- StatefulSets or external managed databases for all five Postgres databases.
-- Redis Deployment/StatefulSet with persistence strategy.
-- Jobs/init containers for Django migrations and `collectstatic`.
-- Event-consumer Deployments for donor, request, and notification.
-- Secrets and ConfigMaps matching `.env.prod`.
-- Ingress or NodePort routing for frontend, gateway, Jenkins, and Grafana.
-- Health probes for every HTTP service.
-- Rollback instructions tested on the VPS.
-
-Until then, the correct production deployment command remains:
-
-```bash
-docker compose --env-file /var/www/bden/.env.prod -f docker-compose.prod.yml -p bden-prod up -d --wait --remove-orphans
-```
+Use Compose only as a temporary fallback if k3s is unavailable. If you switch to fallback mode, also switch host Nginx back to the Compose routing file that points `/` to `8088` and `/api/` to `8080`.
 
 ---
 
@@ -2246,24 +2234,16 @@ kubectl rollout status deployment/auth-service -n bden-prod --timeout=60s
 ### View live logs
 
 ```bash
-# Docker Compose production mode
+# Kubernetes production mode
 cd /var/www/bden
-docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod \
-  logs -f auth-service --tail=100
-
-# Future k3s mode
 kubectl logs -l app=auth-service -n bden-prod --tail=100 -f
 ```
 
 ### Django shell on production
 
 ```bash
-# Docker Compose production mode
+# Kubernetes production mode
 cd /var/www/bden
-docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod \
-  exec auth-service python manage.py shell
-
-# Future k3s mode
 kubectl exec -it deployment/auth-service -n bden-prod \
   -- python manage.py shell
 ```
@@ -2323,26 +2303,21 @@ sudo /opt/bitnami/letsencrypt/certbot renew --dry-run 2>/dev/null || sudo certbo
 # SSH to server
 ssh -i /path/to/key.pem bitnami@63.185.84.222
 
-# Start all services
+# Deploy all services through k3s
 cd /var/www/bden
-docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod up -d --wait
+bash /var/www/bden/scripts/deploy-prod.sh
 
-# Stop all services
-docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod down
+# View all production pods
+kubectl get pods -n bden-prod -o wide
 
-# View all container statuses
-docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod ps
+# View logs
+kubectl logs -n bden-prod deployment/auth-service --tail=100 -f
 
-# View logs (replace auth-service with any service name)
-docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod logs -f auth-service
+# Run migrations manually if needed
+kubectl exec -n bden-prod deployment/auth-service -- python manage.py migrate
 
-# Run migrations
-docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod \
-  run --rm auth-service python manage.py migrate
-
-# Manual deploy (skipping Jenkins)
-docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod \
-  up -d --build --wait --remove-orphans
+# Check gateway health
+curl -fsS -H "Host: bden.hinkaku.tech" http://127.0.0.1:30080/health/
 
 # Restart Jenkins
 sudo systemctl restart jenkins
@@ -2373,9 +2348,9 @@ Work through this together before calling the VPS "production ready".
 - [ ] SSH access works: `ssh -i key.pem bitnami@63.185.84.222`
 - [ ] `/var/www/bden` exists and contains the repo
 - [ ] `docker --version` works without `sudo`
-- [ ] `kubectl get nodes` shows `Ready` for future k3s orchestration
+- [ ] `kubectl get nodes` shows `Ready`
 - [ ] `kubectl get namespaces` shows `bden-prod` and `bden-monitoring`
-- [ ] `kubectl get secrets -n bden-prod` shows `bden-secrets`
+- [ ] `kubectl get secrets -n bden-prod` shows `bden-env`
 
 ### Networking
 - [ ] `sudo ufw status` shows all required ports
@@ -2405,9 +2380,9 @@ Work through this together before calling the VPS "production ready".
 - [ ] Push a commit to `main` → Jenkins auto-triggers within 30 seconds
 
 ### Application
-- [ ] `docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod ps` → all containers `Up`
+- [ ] `kubectl get pods -n bden-prod` → app pods are `Running`
 - [ ] All migrations ran without errors
-- [ ] `curl -H "Host: bden.hinkaku.tech" http://127.0.0.1:8080/health/auth/` → service health JSON
+- [ ] `curl -H "Host: bden.hinkaku.tech" http://127.0.0.1:30080/health/auth/` → service health JSON
 - [ ] `https://bden.hinkaku.tech/api/docs/` → Swagger UI loads
 - [ ] `https://bden.hinkaku.tech/admin/` → admin panel loads
 
@@ -2421,7 +2396,7 @@ Work through this together before calling the VPS "production ready".
 - [ ] Jenkins triggers automatically within 30 seconds
 - [ ] All pipeline stages pass (green)
 - [ ] Production images are rebuilt by Jenkins on the VPS
-- [ ] `docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod ps` shows freshly recreated services
+- [ ] `kubectl get pods -n bden-prod` shows freshly recreated pods
 - [ ] `https://bden.hinkaku.tech` still loads and API health checks pass
 
 ---
@@ -2499,12 +2474,29 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod \
 ### Nginx 502 Bad Gateway
 
 ```bash
-# Check the relevant container is running
-cd /var/www/bden
-docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod ps
+# Check the Kubernetes gateway and pods
+kubectl get pods -n bden-prod -o wide
+kubectl get svc -n bden-prod
+curl -fsS -H "Host: bden.hinkaku.tech" http://127.0.0.1:30080/health/
 
 # Check Nginx is proxying to the correct port
 sudo nginx -T | grep proxy_pass
+```
+
+Expected host Nginx proxy for the public BDEN site:
+
+```text
+proxy_pass http://127.0.0.1:30080;
+```
+
+If Nginx still points to `8088` or `8080`, copy the k8s host config and reload:
+
+```bash
+cd /var/www/bden
+sudo cp infrastructure/nginx/bden.host.k8s.conf /etc/nginx/sites-available/bden
+sudo ln -sf /etc/nginx/sites-available/bden /etc/nginx/sites-enabled/bden
+sudo nginx -t
+sudo systemctl reload nginx
 ```
 
 ### Nginx test fails because certificate files are missing
@@ -2547,9 +2539,8 @@ du -sh /var/lib/jenkins/
 ```bash
 sudo ss -tlnp | grep <port-number>
 # If a BDEN port conflicts:
-# 1. Edit docker-compose.prod.yml to change the host port
-# 2. Restart only the affected container:
-docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod \
-  up -d --no-deps <service-name>
+# 1. Check whether the conflict is from host Nginx, Jenkins, Grafana, or the local registry.
+# 2. Do not expose app/database/Redis ports directly. Kubernetes should use ClusterIP services.
+kubectl get svc -n bden-prod
 ```
 
