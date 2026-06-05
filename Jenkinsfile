@@ -11,7 +11,7 @@ pipeline {
     parameters {
         booleanParam(
             name: 'DEPLOY_PROD',
-            defaultValue: false,
+            defaultValue: true,
             description: 'Deploy to the VPS production Compose stack when this build runs on main.'
         )
         booleanParam(
@@ -144,7 +144,7 @@ pipeline {
             when {
                 allOf {
                     expression { return env.IS_MAIN_BRANCH == 'true' }
-                    expression { return params.DEPLOY_PROD }
+                    expression { return params.DEPLOY_PROD || params.DEPLOY_ONLY }
                 }
             }
             steps {
