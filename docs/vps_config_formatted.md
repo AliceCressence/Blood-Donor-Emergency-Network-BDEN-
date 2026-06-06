@@ -1383,6 +1383,21 @@ docker compose \
   up -d --remove-orphans
 ```
 
+BDEN's Compose fallback uses these localhost-only ports:
+
+| Runtime piece | Host port |
+|---------------|-----------|
+| frontend | `8088` |
+| gateway/API | `8080` |
+| auth-db | `25432` |
+| donor-db | `25433` |
+| request-db | `25434` |
+| campaign-db | `25435` |
+| notification-db | `25436` |
+| Redis | `26379` |
+
+If your `/var/www/bden/.env.prod` still contains older values such as `15432`, `15433`, or `16379`, replace them with the values above. Those older ports may collide with local development stacks, stale containers, or another project on the VPS.
+
 ✅ **CHECK:**
 
 ```bash
