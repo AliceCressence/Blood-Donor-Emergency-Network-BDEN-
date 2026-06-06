@@ -249,6 +249,19 @@ EOF
                         echo "WARNING: ${reason}" >&2
                         echo "WARNING: Falling back to production Docker Compose so bden.hinkaku.tech can come online while k3s CNI is repaired." >&2
 
+                        export BDEN_GATEWAY_HOST_PORT="${BDEN_GATEWAY_HOST_PORT:-8080}"
+                        export BDEN_FRONTEND_HOST_PORT="${BDEN_FRONTEND_HOST_PORT:-8088}"
+                        export AUTH_DB_HOST_PORT=25432
+                        export DONOR_DB_HOST_PORT=25433
+                        export REQUEST_DB_HOST_PORT=25434
+                        export CAMPAIGN_DB_HOST_PORT=25435
+                        export NOTIFICATION_DB_HOST_PORT=25436
+                        export REDIS_HOST_PORT=26379
+
+                        echo "Using Compose fallback host ports:"
+                        echo "frontend=${BDEN_FRONTEND_HOST_PORT} gateway=${BDEN_GATEWAY_HOST_PORT}"
+                        echo "auth-db=${AUTH_DB_HOST_PORT} donor-db=${DONOR_DB_HOST_PORT} request-db=${REQUEST_DB_HOST_PORT} campaign-db=${CAMPAIGN_DB_HOST_PORT} notification-db=${NOTIFICATION_DB_HOST_PORT} redis=${REDIS_HOST_PORT}"
+
                         docker compose --env-file "${RESOLVED_PROD_ENV_FILE}" -f docker-compose.prod.yml -p "${PROD_PROJECT}" up -d --remove-orphans
                         docker compose --env-file "${RESOLVED_PROD_ENV_FILE}" -f docker-compose.prod.yml -p "${PROD_PROJECT}" ps
 
