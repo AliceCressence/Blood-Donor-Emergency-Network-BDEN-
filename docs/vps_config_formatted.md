@@ -1283,7 +1283,7 @@ sudo systemctl restart k3s
 kubectl wait --for=condition=Ready node --all --timeout=180s
 ```
 
-Optional, but useful if you want Jenkins to update host Nginx automatically:
+Optional, but useful if you want Jenkins to update host Nginx, write the k3s local registry config, and restart k3s automatically when cluster DNS gets stuck:
 
 ```bash
 sudo visudo
@@ -1292,7 +1292,15 @@ sudo visudo
 Add:
 
 ```text
-jenkins ALL=(root) NOPASSWD: /bin/cp, /bin/ln, /usr/sbin/nginx, /bin/systemctl, /bin/mkdir, /bin/grep, /usr/bin/tee
+jenkins ALL=(root) NOPASSWD: /bin/cp, /usr/bin/cp, /bin/ln, /usr/bin/ln, /usr/sbin/nginx, /bin/systemctl, /usr/bin/systemctl, /bin/mkdir, /usr/bin/mkdir, /bin/grep, /usr/bin/grep, /usr/bin/tee
+```
+
+Do not test this with `sudo -n true`; the pipeline uses command-specific sudo. Test the actual commands Jenkins needs:
+
+```bash
+sudo -u jenkins sudo -n /usr/bin/systemctl status k3s >/dev/null && echo "jenkins can access systemctl"
+sudo -u jenkins sudo -n /usr/bin/mkdir -p /etc/rancher/k3s && echo "jenkins can create k3s config dir"
+sudo -u jenkins sudo -n /usr/sbin/nginx -t && echo "jenkins can test nginx"
 ```
 
 ---
@@ -1332,6 +1340,7 @@ Jenkinsfile
 docker-compose.prod.yml
 .env.prod.example
 infrastructure/k8s/namespace.yaml
+infrastructure/k8s/network-policy.yaml
 infrastructure/k8s/data-services.yaml
 infrastructure/k8s/app-services.yaml
 infrastructure/k8s/event-consumers.yaml
@@ -1433,6 +1442,7 @@ docker push localhost:5000/bden/campaign-service:latest
 docker push localhost:5000/bden/notification-service:latest
 
 kubectl apply -f infrastructure/k8s/namespace.yaml
+kubectl apply -f infrastructure/k8s/network-policy.yaml
 kubectl create secret generic bden-env \
   --namespace=bden-prod \
   --from-env-file=/var/www/bden/.env.prod \
@@ -1910,6 +1920,7 @@ publish_image "${PROJECT}-notification-service:latest" notification-service
 
 echo "--- Applying Kubernetes manifests..."
 kubectl apply -f infrastructure/k8s/namespace.yaml
+kubectl apply -f infrastructure/k8s/network-policy.yaml
 kubectl create secret generic bden-env \
   --namespace="${NAMESPACE}" \
   --from-env-file="${ENV_FILE}" \
@@ -2486,10 +2497,15 @@ kubectl rollout status deployment/coredns -n kube-system --timeout=180s
 kubectl get pods -n kube-system -o wide
 kubectl logs -n kube-system deployment/coredns --all-containers --tail=200
 
+kubectl apply -f /var/www/bden/infrastructure/k8s/network-policy.yaml
+kubectl get networkpolicy -A
+kubectl get svc kube-dns -n kube-system -o wide
 kubectl get svc,endpoints -n bden-prod
 kubectl delete pod bden-dns-check -n bden-prod --ignore-not-found=true
 kubectl run bden-dns-check -n bden-prod --image=busybox:1.36 --restart=Never --command -- sleep 300
 kubectl wait --for=condition=Ready pod/bden-dns-check -n bden-prod --timeout=90s
+kubectl exec -n bden-prod bden-dns-check -- cat /etc/resolv.conf
+kubectl exec -n bden-prod bden-dns-check -- nslookup kubernetes.default.svc.cluster.local
 kubectl exec -n bden-prod bden-dns-check -- nslookup auth-db.bden-prod.svc.cluster.local
 kubectl delete pod bden-dns-check -n bden-prod --ignore-not-found=true
 ```
@@ -2505,6 +2521,8 @@ kubectl rollout status deployment/coredns -n kube-system --timeout=180s
 ```
 
 Then rerun the Jenkins deploy. The current Jenkinsfile includes this DNS preflight and will stop early with CoreDNS logs if cluster DNS is still broken.
+
+`infrastructure/k8s/network-policy.yaml` intentionally permits runtime traffic inside `bden-prod` and DNS traffic to CoreDNS. This avoids accidental default-deny behavior while the production MVP is still being stabilized. Tighten this later once the deployment is green.
 
 ### Jenkins not triggering on push
 

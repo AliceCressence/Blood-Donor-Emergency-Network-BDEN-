@@ -195,6 +195,18 @@ pipeline {
                         exit 1
                     }
 
+                    sudo_systemctl() {
+                        if sudo -n /bin/systemctl "$@" >/dev/null 2>&1; then
+                            return 0
+                        fi
+
+                        if sudo -n /usr/bin/systemctl "$@" >/dev/null 2>&1; then
+                            return 0
+                        fi
+
+                        return 1
+                    }
+
                     if ! docker inspect bden-local-registry >/dev/null 2>&1; then
                         docker run -d \
                             --restart unless-stopped \
@@ -202,21 +214,22 @@ pipeline {
                             -p 127.0.0.1:5000:5000 \
                             registry:2
                     elif ! docker inspect -f '{{.State.Running}}' bden-local-registry | grep -q true; then
-                        docker start bden-local-registry
+                            docker start bden-local-registry
                     fi
 
-                    if sudo -n true >/dev/null 2>&1; then
-                        sudo mkdir -p /etc/rancher/k3s
-                        if [ ! -f /etc/rancher/k3s/registries.yaml ] || ! sudo grep -q "127.0.0.1:5000" /etc/rancher/k3s/registries.yaml; then
-                            cat > /tmp/bden-registries.yaml <<'EOF'
+                    if sudo -n mkdir -p /etc/rancher/k3s >/dev/null 2>&1; then
+                        sudo -n mkdir -p /etc/rancher/k3s
+                        cat > /tmp/bden-registries.yaml <<'EOF'
 mirrors:
   "localhost:5000":
     endpoint:
       - "http://127.0.0.1:5000"
 EOF
-                            sudo cp /tmp/bden-registries.yaml /etc/rancher/k3s/registries.yaml
-                            sudo systemctl restart k3s
+                        if sudo -n cp /tmp/bden-registries.yaml /etc/rancher/k3s/registries.yaml; then
+                            sudo_systemctl restart k3s || echo "WARNING: Jenkins could not restart k3s with sudo systemctl."
                             kubectl wait --for=condition=Ready node --all --timeout=180s
+                        else
+                            echo "WARNING: Jenkins could not update /etc/rancher/k3s/registries.yaml."
                         fi
                     else
                         echo "WARNING: Jenkins cannot configure /etc/rancher/k3s/registries.yaml without sudo. Ensure k3s trusts http://127.0.0.1:5000 for localhost:5000 image pulls."
@@ -239,6 +252,7 @@ EOF
                     publish_image "${PROD_PROJECT}-notification-service:latest" notification-service
 
                     kubectl apply -f infrastructure/k8s/namespace.yaml
+                    kubectl apply -f infrastructure/k8s/network-policy.yaml
                     kubectl create secret generic bden-env \
                         --namespace="${K8S_NAMESPACE}" \
                         --from-env-file="${RESOLVED_PROD_ENV_FILE}" \
@@ -254,6 +268,8 @@ EOF
 
                     echo "--- Verifying Kubernetes DNS before app rollout ---"
                     rollout_status deployment coredns 180s kube-system
+                    kubectl get networkpolicy -A
+                    kubectl get svc kube-dns -n kube-system -o wide
                     kubectl get svc auth-db donor-db request-db campaign-db notification-db redis -n "${K8S_NAMESPACE}"
                     kubectl get endpoints auth-db donor-db request-db campaign-db notification-db redis -n "${K8S_NAMESPACE}"
 
@@ -267,6 +283,10 @@ EOF
 
                     dns_ok=false
                     for attempt in $(seq 1 30); do
+                        kubectl exec -n "${K8S_NAMESPACE}" bden-dns-check -- cat /etc/resolv.conf || true
+                        kubectl exec -n "${K8S_NAMESPACE}" bden-dns-check -- nslookup kubernetes.default.svc.cluster.local || true
+                        kubectl exec -n "${K8S_NAMESPACE}" bden-dns-check -- nslookup auth-db || true
+
                         if kubectl exec -n "${K8S_NAMESPACE}" bden-dns-check -- nslookup "auth-db.${K8S_NAMESPACE}.svc.cluster.local"; then
                             dns_ok=true
                             break
@@ -278,31 +298,42 @@ EOF
 
                     kubectl delete pod bden-dns-check -n "${K8S_NAMESPACE}" --ignore-not-found=true
 
-                    if [ "${dns_ok}" != "true" ] && sudo -n true >/dev/null 2>&1; then
+                    if [ "${dns_ok}" != "true" ]; then
                         echo "Kubernetes DNS did not resolve on first attempt. Restarting k3s once and retrying DNS preflight."
-                        sudo systemctl restart k3s
-                        kubectl wait --for=condition=Ready node --all --timeout=180s
-                        rollout_status deployment coredns 180s kube-system
+                        if sudo_systemctl restart k3s; then
+                            kubectl wait --for=condition=Ready node --all --timeout=180s
+                            rollout_status deployment coredns 180s kube-system
 
-                        kubectl delete pod bden-dns-check -n "${K8S_NAMESPACE}" --ignore-not-found=true
-                        kubectl run bden-dns-check \
-                            -n "${K8S_NAMESPACE}" \
-                            --image=busybox:1.36 \
-                            --restart=Never \
-                            --command -- sleep 300
-                        kubectl wait --for=condition=Ready pod/bden-dns-check -n "${K8S_NAMESPACE}" --timeout=90s
+                            kubectl apply -f infrastructure/k8s/network-policy.yaml
+                            kubectl get networkpolicy -A
+                            kubectl get svc kube-dns -n kube-system -o wide
 
-                        for attempt in $(seq 1 30); do
-                            if kubectl exec -n "${K8S_NAMESPACE}" bden-dns-check -- nslookup "auth-db.${K8S_NAMESPACE}.svc.cluster.local"; then
-                                dns_ok=true
-                                break
-                            fi
+                            kubectl delete pod bden-dns-check -n "${K8S_NAMESPACE}" --ignore-not-found=true
+                            kubectl run bden-dns-check \
+                                -n "${K8S_NAMESPACE}" \
+                                --image=busybox:1.36 \
+                                --restart=Never \
+                                --command -- sleep 300
+                            kubectl wait --for=condition=Ready pod/bden-dns-check -n "${K8S_NAMESPACE}" --timeout=90s
 
-                            echo "Waiting for Kubernetes DNS after k3s restart (${attempt}/30)"
-                            sleep 5
-                        done
+                            for attempt in $(seq 1 30); do
+                                kubectl exec -n "${K8S_NAMESPACE}" bden-dns-check -- cat /etc/resolv.conf || true
+                                kubectl exec -n "${K8S_NAMESPACE}" bden-dns-check -- nslookup kubernetes.default.svc.cluster.local || true
+                                kubectl exec -n "${K8S_NAMESPACE}" bden-dns-check -- nslookup auth-db || true
 
-                        kubectl delete pod bden-dns-check -n "${K8S_NAMESPACE}" --ignore-not-found=true
+                                if kubectl exec -n "${K8S_NAMESPACE}" bden-dns-check -- nslookup "auth-db.${K8S_NAMESPACE}.svc.cluster.local"; then
+                                    dns_ok=true
+                                    break
+                                fi
+
+                                echo "Waiting for Kubernetes DNS after k3s restart (${attempt}/30)"
+                                sleep 5
+                            done
+
+                            kubectl delete pod bden-dns-check -n "${K8S_NAMESPACE}" --ignore-not-found=true
+                        else
+                            echo "WARNING: Jenkins could not restart k3s. Configure passwordless sudo for systemctl restart k3s or restart k3s manually on the VPS."
+                        fi
                     fi
 
                     if [ "${dns_ok}" != "true" ]; then
@@ -336,11 +367,10 @@ EOF
                     rollout_status deployment notification-service 900s
                     rollout_status deployment gateway 900s
 
-                    if sudo -n true >/dev/null 2>&1; then
-                        sudo cp infrastructure/nginx/bden.host.k8s.conf /etc/nginx/sites-available/bden
-                        sudo ln -sf /etc/nginx/sites-available/bden /etc/nginx/sites-enabled/bden
-                        sudo nginx -t
-                        sudo systemctl reload nginx
+                    if sudo -n cp infrastructure/nginx/bden.host.k8s.conf /etc/nginx/sites-available/bden &&
+                        sudo -n ln -sf /etc/nginx/sites-available/bden /etc/nginx/sites-enabled/bden &&
+                        sudo -n nginx -t; then
+                        sudo_systemctl reload nginx || echo "WARNING: Jenkins could not reload Nginx with sudo systemctl."
                     else
                         echo "WARNING: Jenkins cannot update host Nginx without sudo. Ensure /etc/nginx/sites-available/bden proxies bden.hinkaku.tech to http://127.0.0.1:30080"
                     fi
