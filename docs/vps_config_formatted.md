@@ -2471,6 +2471,41 @@ cd /var/www/bden
 docker compose --env-file .env.example -p bden-ci build request-service
 ```
 
+### Kubernetes service DNS fails during deploy
+
+If Jenkins shows app logs like this during the Kubernetes rollout:
+
+```text
+waiting for auth-db:5432: [Errno -3] Temporary failure in name resolution
+```
+
+the service image was pulled correctly, but the pod could not resolve Kubernetes service names through CoreDNS. Check the cluster DNS before blaming Django or Docker images:
+
+```bash
+kubectl rollout status deployment/coredns -n kube-system --timeout=180s
+kubectl get pods -n kube-system -o wide
+kubectl logs -n kube-system deployment/coredns --all-containers --tail=200
+
+kubectl get svc,endpoints -n bden-prod
+kubectl delete pod bden-dns-check -n bden-prod --ignore-not-found=true
+kubectl run bden-dns-check -n bden-prod --image=busybox:1.36 --restart=Never --command -- sleep 300
+kubectl wait --for=condition=Ready pod/bden-dns-check -n bden-prod --timeout=90s
+kubectl exec -n bden-prod bden-dns-check -- nslookup auth-db.bden-prod.svc.cluster.local
+kubectl delete pod bden-dns-check -n bden-prod --ignore-not-found=true
+```
+
+Expected behavior: `nslookup` returns a ClusterIP for `auth-db.bden-prod.svc.cluster.local`.
+
+If it fails:
+
+```bash
+sudo systemctl restart k3s
+kubectl wait --for=condition=Ready node --all --timeout=180s
+kubectl rollout status deployment/coredns -n kube-system --timeout=180s
+```
+
+Then rerun the Jenkins deploy. The current Jenkinsfile includes this DNS preflight and will stop early with CoreDNS logs if cluster DNS is still broken.
+
 ### Jenkins not triggering on push
 
 ```bash

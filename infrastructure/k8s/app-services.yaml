@@ -26,11 +26,12 @@ spec:
             - { name: DJANGO_SETTINGS_MODULE, value: config.settings.prod }
             - { name: DEBUG, value: "False" }
             - { name: SECURE_SSL_REDIRECT, value: "False" }
-            - { name: AUTH_DB_HOST, value: auth-db }
+            - { name: AUTH_DB_HOST, value: auth-db.bden-prod.svc.cluster.local }
             - { name: AUTH_DB_PORT, value: "5432" }
-            - { name: REDIS_URL, value: redis://redis:6379/0 }
-            - { name: DONOR_SERVICE_INTERNAL_URL, value: http://donor-service:8002 }
-            - { name: WAIT_FOR_HOSTS, value: auth-db:5432,redis:6379 }
+            - { name: REDIS_URL, value: redis://redis.bden-prod.svc.cluster.local:6379/0 }
+            - { name: DONOR_SERVICE_INTERNAL_URL, value: http://donor-service.bden-prod.svc.cluster.local:8002 }
+            - { name: WAIT_FOR_HOSTS, value: auth-db.bden-prod.svc.cluster.local:5432,redis.bden-prod.svc.cluster.local:6379 }
+            - { name: WAIT_FOR_TIMEOUT, value: "900" }
           command: ["sh", "-c"]
           args:
             - python wait_for.py &&
@@ -46,6 +47,16 @@ spec:
                   value: bden.hinkaku.tech
             initialDelaySeconds: 20
             periodSeconds: 10
+            failureThreshold: 12
+          startupProbe:
+            httpGet:
+              path: /health/
+              port: 8001
+              httpHeaders:
+                - name: Host
+                  value: bden.hinkaku.tech
+            periodSeconds: 10
+            failureThreshold: 90
           livenessProbe:
             httpGet:
               path: /health/
@@ -53,7 +64,7 @@ spec:
               httpHeaders:
                 - name: Host
                   value: bden.hinkaku.tech
-            initialDelaySeconds: 60
+            initialDelaySeconds: 0
             periodSeconds: 20
 ---
 apiVersion: v1
@@ -96,13 +107,14 @@ spec:
             - { name: DJANGO_SETTINGS_MODULE, value: config.settings.prod }
             - { name: DEBUG, value: "False" }
             - { name: SECURE_SSL_REDIRECT, value: "False" }
-            - { name: DONOR_DB_HOST, value: donor-db }
+            - { name: DONOR_DB_HOST, value: donor-db.bden-prod.svc.cluster.local }
             - { name: DONOR_DB_PORT, value: "5432" }
-            - { name: REDIS_URL, value: redis://redis:6379/0 }
-            - { name: REDIS_CACHE_URL, value: redis://redis:6379/1 }
-            - { name: AUTH_SERVICE_INTERNAL_URL, value: http://auth-service:8001 }
-            - { name: REQUEST_SERVICE_INTERNAL_URL, value: http://request-service:8003 }
-            - { name: WAIT_FOR_HOSTS, value: donor-db:5432,redis:6379 }
+            - { name: REDIS_URL, value: redis://redis.bden-prod.svc.cluster.local:6379/0 }
+            - { name: REDIS_CACHE_URL, value: redis://redis.bden-prod.svc.cluster.local:6379/1 }
+            - { name: AUTH_SERVICE_INTERNAL_URL, value: http://auth-service.bden-prod.svc.cluster.local:8001 }
+            - { name: REQUEST_SERVICE_INTERNAL_URL, value: http://request-service.bden-prod.svc.cluster.local:8003 }
+            - { name: WAIT_FOR_HOSTS, value: donor-db.bden-prod.svc.cluster.local:5432,redis.bden-prod.svc.cluster.local:6379 }
+            - { name: WAIT_FOR_TIMEOUT, value: "900" }
           command: ["sh", "-c"]
           args:
             - python wait_for.py &&
@@ -118,6 +130,16 @@ spec:
                   value: bden.hinkaku.tech
             initialDelaySeconds: 20
             periodSeconds: 10
+            failureThreshold: 12
+          startupProbe:
+            httpGet:
+              path: /health/
+              port: 8002
+              httpHeaders:
+                - name: Host
+                  value: bden.hinkaku.tech
+            periodSeconds: 10
+            failureThreshold: 90
           livenessProbe:
             httpGet:
               path: /health/
@@ -125,7 +147,7 @@ spec:
               httpHeaders:
                 - name: Host
                   value: bden.hinkaku.tech
-            initialDelaySeconds: 60
+            initialDelaySeconds: 0
             periodSeconds: 20
 ---
 apiVersion: v1
@@ -167,12 +189,13 @@ spec:
           env:
             - { name: DJANGO_SETTINGS_MODULE, value: config.settings.prod }
             - { name: DEBUG, value: "False" }
-            - { name: REQUEST_DB_HOST, value: request-db }
+            - { name: REQUEST_DB_HOST, value: request-db.bden-prod.svc.cluster.local }
             - { name: REQUEST_DB_PORT, value: "5432" }
-            - { name: REDIS_URL, value: redis://redis:6379/0 }
-            - { name: DONOR_SERVICE_URL, value: http://donor-service:8002 }
-            - { name: NOTIFICATION_SERVICE_URL, value: http://notification-service:8005 }
-            - { name: WAIT_FOR_HOSTS, value: request-db:5432,redis:6379 }
+            - { name: REDIS_URL, value: redis://redis.bden-prod.svc.cluster.local:6379/0 }
+            - { name: DONOR_SERVICE_URL, value: http://donor-service.bden-prod.svc.cluster.local:8002 }
+            - { name: NOTIFICATION_SERVICE_URL, value: http://notification-service.bden-prod.svc.cluster.local:8005 }
+            - { name: WAIT_FOR_HOSTS, value: request-db.bden-prod.svc.cluster.local:5432,redis.bden-prod.svc.cluster.local:6379 }
+            - { name: WAIT_FOR_TIMEOUT, value: "900" }
           command: ["sh", "-c"]
           args:
             - python wait_for.py &&
@@ -188,6 +211,16 @@ spec:
                   value: bden.hinkaku.tech
             initialDelaySeconds: 20
             periodSeconds: 10
+            failureThreshold: 12
+          startupProbe:
+            httpGet:
+              path: /health/
+              port: 8003
+              httpHeaders:
+                - name: Host
+                  value: bden.hinkaku.tech
+            periodSeconds: 10
+            failureThreshold: 90
           livenessProbe:
             httpGet:
               path: /health/
@@ -195,7 +228,7 @@ spec:
               httpHeaders:
                 - name: Host
                   value: bden.hinkaku.tech
-            initialDelaySeconds: 60
+            initialDelaySeconds: 0
             periodSeconds: 20
 ---
 apiVersion: v1
@@ -238,11 +271,12 @@ spec:
             - { name: DJANGO_SETTINGS_MODULE, value: config.settings.prod }
             - { name: DEBUG, value: "False" }
             - { name: SECURE_SSL_REDIRECT, value: "False" }
-            - { name: CAMPAIGN_DB_HOST, value: campaign-db }
+            - { name: CAMPAIGN_DB_HOST, value: campaign-db.bden-prod.svc.cluster.local }
             - { name: CAMPAIGN_DB_PORT, value: "5432" }
-            - { name: REDIS_URL, value: redis://redis:6379/0 }
-            - { name: DONOR_SERVICE_INTERNAL_URL, value: http://donor-service:8002 }
-            - { name: WAIT_FOR_HOSTS, value: campaign-db:5432,redis:6379 }
+            - { name: REDIS_URL, value: redis://redis.bden-prod.svc.cluster.local:6379/0 }
+            - { name: DONOR_SERVICE_INTERNAL_URL, value: http://donor-service.bden-prod.svc.cluster.local:8002 }
+            - { name: WAIT_FOR_HOSTS, value: campaign-db.bden-prod.svc.cluster.local:5432,redis.bden-prod.svc.cluster.local:6379 }
+            - { name: WAIT_FOR_TIMEOUT, value: "900" }
           command: ["sh", "-c"]
           args:
             - python wait_for.py &&
@@ -258,6 +292,16 @@ spec:
                   value: bden.hinkaku.tech
             initialDelaySeconds: 20
             periodSeconds: 10
+            failureThreshold: 12
+          startupProbe:
+            httpGet:
+              path: /health/
+              port: 8004
+              httpHeaders:
+                - name: Host
+                  value: bden.hinkaku.tech
+            periodSeconds: 10
+            failureThreshold: 90
           livenessProbe:
             httpGet:
               path: /health/
@@ -265,7 +309,7 @@ spec:
               httpHeaders:
                 - name: Host
                   value: bden.hinkaku.tech
-            initialDelaySeconds: 60
+            initialDelaySeconds: 0
             periodSeconds: 20
 ---
 apiVersion: v1
@@ -307,10 +351,11 @@ spec:
           env:
             - { name: DJANGO_SETTINGS_MODULE, value: config.settings.prod }
             - { name: DEBUG, value: "False" }
-            - { name: NOTIFICATION_DB_HOST, value: notification-db }
+            - { name: NOTIFICATION_DB_HOST, value: notification-db.bden-prod.svc.cluster.local }
             - { name: NOTIFICATION_DB_PORT, value: "5432" }
-            - { name: REDIS_URL, value: redis://redis:6379/0 }
-            - { name: WAIT_FOR_HOSTS, value: notification-db:5432,redis:6379 }
+            - { name: REDIS_URL, value: redis://redis.bden-prod.svc.cluster.local:6379/0 }
+            - { name: WAIT_FOR_HOSTS, value: notification-db.bden-prod.svc.cluster.local:5432,redis.bden-prod.svc.cluster.local:6379 }
+            - { name: WAIT_FOR_TIMEOUT, value: "900" }
           command: ["sh", "-c"]
           args:
             - python wait_for.py &&
@@ -326,6 +371,16 @@ spec:
                   value: bden.hinkaku.tech
             initialDelaySeconds: 20
             periodSeconds: 10
+            failureThreshold: 12
+          startupProbe:
+            httpGet:
+              path: /health/
+              port: 8005
+              httpHeaders:
+                - name: Host
+                  value: bden.hinkaku.tech
+            periodSeconds: 10
+            failureThreshold: 90
           livenessProbe:
             httpGet:
               path: /health/
@@ -333,7 +388,7 @@ spec:
               httpHeaders:
                 - name: Host
                   value: bden.hinkaku.tech
-            initialDelaySeconds: 60
+            initialDelaySeconds: 0
             periodSeconds: 20
 ---
 apiVersion: v1
