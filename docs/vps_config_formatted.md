@@ -1152,7 +1152,57 @@ You should see a ping event with response code `200`.
 
 ## Section 11 — The Jenkinsfile
 
-The repository now contains a production-aware `Jenkinsfile` that deploys BDEN to k3s. Docker Compose is still used to build images and for local/fallback operations, but the active production runtime is Kubernetes.
+The repository now contains a production-aware `Jenkinsfile` that deploys BDEN to k3s when the Kubernetes runtime is healthy. Docker Compose is still used to build images and is also kept as the emergency production fallback. This is intentional: if k3s has a CNI/pod-network issue, Jenkins can still bring `bden.hinkaku.tech` online through `docker-compose.prod.yml` while Kubernetes is repaired.
+
+### 11.1 — Current production deployment behavior
+
+The deploy stage follows this order:
+
+1. Build all production images with `docker-compose.prod.yml`.
+2. Push images to the local VPS registry at `localhost:5000`.
+3. Apply the Kubernetes namespace, network policy, secrets, databases, Redis, services, event consumers, frontend, and gateway.
+4. Run a Kubernetes pod-to-pod network preflight from a temporary `bden-network-check` pod.
+5. If Kubernetes pod networking works, deploy through k3s and point host Nginx to the Kubernetes gateway on `127.0.0.1:30080`.
+6. If Kubernetes pod networking fails, start the production Compose stack and point host Nginx to:
+   - frontend: `127.0.0.1:8088`
+   - gateway/API: `127.0.0.1:8080`
+
+> ⚠️ **WARNING:** A successful Docker image build does not automatically make the app available at `bden.hinkaku.tech`. The site becomes available only after either the Kubernetes deployment succeeds or the Compose fallback starts and host Nginx points to the correct runtime.
+
+### 11.2 — What the fast Kubernetes failure means
+
+If Jenkins logs show something like:
+
+```text
+ERROR: Kubernetes pod network cannot reach 10.42.x.x:5432
+```
+
+that means the application images were built, but the k3s pod network is broken. In that state, app pods cannot reach database pods even by direct pod IP. This is a k3s/CNI problem, not a Django, PostgreSQL, or DNS-only problem.
+
+The Jenkinsfile now handles this by falling back to production Compose instead of failing the whole deploy. Kubernetes should still be repaired later, but it should not block the public site from coming online.
+
+### 11.3 — Jenkins sudo requirements
+
+For the automatic Nginx switch to work, Jenkins needs passwordless sudo for these safe commands:
+
+```bash
+sudo visudo -f /etc/sudoers.d/jenkins-bden
+```
+
+Add:
+
+```text
+jenkins ALL=(root) NOPASSWD: /bin/cp, /bin/ln, /usr/sbin/nginx, /bin/systemctl, /usr/bin/systemctl, /bin/mkdir
+```
+
+✅ **CHECK:**
+
+```bash
+sudo -u jenkins sudo -n nginx -t
+sudo -u jenkins sudo -n systemctl reload nginx
+```
+
+If Jenkins cannot use sudo, the pipeline can still start the Compose containers, but you must manually copy the correct Nginx host config and reload Nginx.
 
 ### 11.1 — What the current Jenkinsfile does
 
@@ -1305,14 +1355,111 @@ sudo -u jenkins sudo -n /usr/sbin/nginx -t && echo "jenkins can test nginx"
 
 ---
 
-## Section 12 — Production Build and Kubernetes Runtime
+## Section 12 — Production Build, Kubernetes Runtime, and Compose Fallback
 
 The production pipeline now uses two pieces together:
 
 - `docker-compose.prod.yml` builds production images locally on the VPS.
 - `infrastructure/k8s/*.yaml` runs the actual production stack in k3s.
 
-Docker Compose remains useful as a fallback, but Kubernetes is now the production runtime.
+Docker Compose remains useful as a fallback, but Kubernetes is now the target production runtime. On this VPS, keep both paths ready:
+
+- **Normal path:** k3s serves the stack through the Kubernetes gateway NodePort `30080`.
+- **Fallback path:** `docker-compose.prod.yml` serves the stack directly on localhost ports, and host Nginx proxies the public domain to those ports.
+
+This dual path is important because k3s can be healthy enough to show pods as `Running` while still having a broken CNI/pod network. When that happens, app containers cannot reach database containers inside Kubernetes. Compose bypasses that specific k3s network layer.
+
+### 12.1 — Manual Compose fallback
+
+Run this only when Kubernetes is failing and you need `bden.hinkaku.tech` online quickly:
+
+```bash
+cd /var/www/bden
+
+docker compose \
+  --env-file .env.prod \
+  -f docker-compose.prod.yml \
+  -p bden-prod \
+  up -d --remove-orphans
+```
+
+✅ **CHECK:**
+
+```bash
+docker compose --env-file .env.prod -f docker-compose.prod.yml -p bden-prod ps
+curl -fsS http://127.0.0.1:8088/health/
+curl -fsS http://127.0.0.1:8080/health/
+curl -fsS http://127.0.0.1:8080/health/auth/
+curl -fsS http://127.0.0.1:8080/health/donor/
+curl -fsS http://127.0.0.1:8080/health/request/
+curl -fsS http://127.0.0.1:8080/health/campaign/
+curl -fsS http://127.0.0.1:8080/health/notification/
+```
+
+Then point host Nginx to the Compose fallback:
+
+```bash
+sudo cp infrastructure/nginx/bden.host.compose.conf /etc/nginx/sites-available/bden
+sudo ln -sf /etc/nginx/sites-available/bden /etc/nginx/sites-enabled/bden
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+✅ **CHECK from your laptop:**
+
+```bash
+curl -I http://bden.hinkaku.tech
+```
+
+Expected behavior: the response is no longer `502 Bad Gateway`. If SSL is already configured, test `https://bden.hinkaku.tech` as well.
+
+> 📝 **NOTE:** The repository host Nginx files are HTTP templates. If Certbot previously added HTTPS blocks to `/etc/nginx/sites-available/bden`, copying this file will replace that generated HTTPS config. After the HTTP route works, rerun `sudo certbot --nginx -d bden.hinkaku.tech -d jenkins.bden.hinkaku.tech -d grafana.bden.hinkaku.tech` or restore your server-side SSL-enabled Nginx file.
+
+### 12.2 — Switching back to Kubernetes
+
+After k3s networking is repaired and the Jenkins Kubernetes deploy passes, Jenkins will copy `infrastructure/nginx/bden.host.k8s.conf` and route `bden.hinkaku.tech` back to `127.0.0.1:30080`.
+
+Manual switch:
+
+```bash
+cd /var/www/bden
+sudo cp infrastructure/nginx/bden.host.k8s.conf /etc/nginx/sites-available/bden
+sudo ln -sf /etc/nginx/sites-available/bden /etc/nginx/sites-enabled/bden
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+✅ **CHECK:**
+
+```bash
+curl -fsS -H "Host: bden.hinkaku.tech" http://127.0.0.1:30080/health/
+curl -I http://bden.hinkaku.tech
+```
+
+### 12.3 — Repairing k3s pod networking
+
+If the Jenkins preflight says a pod cannot reach another pod IP, first try a simple restart:
+
+```bash
+sudo systemctl restart k3s
+kubectl wait --for=condition=Ready node --all --timeout=180s
+kubectl get pods -A -o wide
+```
+
+Then rerun the Jenkins deployment.
+
+If it still fails, do not keep patching Django services. The CNI layer is broken. Once the Compose fallback is online and the `.env.prod` file is safe, schedule a clean k3s reset:
+
+```bash
+sudo /usr/local/bin/k3s-uninstall.sh
+curl -sfL https://get.k3s.io | sh -s - --write-kubeconfig-mode 644
+mkdir -p ~/.kube
+sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
+sudo chown "$USER:$USER" ~/.kube/config
+kubectl get nodes
+```
+
+> ⚠️ **WARNING:** Do not uninstall k3s while relying on Kubernetes for the live site. Put the site on Compose fallback first.
 
 ### 12.1 — Production ports
 
@@ -1816,6 +1963,64 @@ For today’s Jenkins-first path, you can skip Section 14 entirely and return to
 ---
 
 ## Section 15 — Deploy Script
+
+The Jenkinsfile is the authoritative deployment automation. The script below is for manual recovery or team debugging on the VPS. Use it when you are SSH'd into the server and want to deploy without waiting for a webhook.
+
+There are now two supported modes:
+
+- `k8s`: deploys to Kubernetes and routes host Nginx to `127.0.0.1:30080`.
+- `compose`: deploys with `docker-compose.prod.yml` and routes host Nginx to `127.0.0.1:8088` for the frontend and `127.0.0.1:8080` for APIs.
+
+If k3s pod networking is failing, use `compose` first so the public site works while the Kubernetes runtime is repaired.
+
+### 15.1 — Manual deployment commands
+
+**Compose fallback deploy:**
+
+```bash
+cd /var/www/bden
+git pull origin main
+
+docker compose \
+  --env-file .env.prod \
+  -f docker-compose.prod.yml \
+  -p bden-prod \
+  up -d --build --remove-orphans
+
+sudo cp infrastructure/nginx/bden.host.compose.conf /etc/nginx/sites-available/bden
+sudo ln -sf /etc/nginx/sites-available/bden /etc/nginx/sites-enabled/bden
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+**Kubernetes deploy retry:**
+
+```bash
+cd /var/www/bden
+git pull origin main
+
+kubectl apply -f infrastructure/k8s/namespace.yaml
+kubectl apply -f infrastructure/k8s/network-policy.yaml
+kubectl create secret generic bden-env \
+  --namespace=bden-prod \
+  --from-env-file=.env.prod \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+# Then trigger Jenkins or run the Jenkins deploy stage again.
+```
+
+✅ **CHECK after either mode:**
+
+```bash
+curl -I http://bden.hinkaku.tech
+curl -fsS http://127.0.0.1:8088/health/ || true
+curl -fsS -H "Host: bden.hinkaku.tech" http://127.0.0.1:30080/health/ || true
+```
+
+At least one runtime health check should pass:
+
+- Compose mode: `127.0.0.1:8088/health/` and `127.0.0.1:8080/health/`
+- Kubernetes mode: `127.0.0.1:30080/health/`
 
 This script is optional because the current `Jenkinsfile` already performs the production deploy directly. Keep it as a manual emergency deploy helper for the full k3s stack.
 

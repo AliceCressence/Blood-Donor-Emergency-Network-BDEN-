@@ -244,6 +244,25 @@ EOF
                         docker push "${LOCAL_REGISTRY}/bden/${registry_image}:${BUILD_NUMBER}"
                     }
 
+                    deploy_compose_fallback() {
+                        reason="$1"
+                        echo "WARNING: ${reason}" >&2
+                        echo "WARNING: Falling back to production Docker Compose so bden.hinkaku.tech can come online while k3s CNI is repaired." >&2
+
+                        docker compose --env-file "${RESOLVED_PROD_ENV_FILE}" -f docker-compose.prod.yml -p "${PROD_PROJECT}" up -d --remove-orphans
+                        docker compose --env-file "${RESOLVED_PROD_ENV_FILE}" -f docker-compose.prod.yml -p "${PROD_PROJECT}" ps
+
+                        if sudo -n cp infrastructure/nginx/bden.host.compose.conf /etc/nginx/sites-available/bden &&
+                            sudo -n ln -sf /etc/nginx/sites-available/bden /etc/nginx/sites-enabled/bden &&
+                            sudo -n nginx -t; then
+                            sudo_systemctl reload nginx || echo "WARNING: Jenkins could not reload Nginx with sudo systemctl."
+                        else
+                            echo "WARNING: Jenkins cannot update host Nginx without sudo. Manually copy infrastructure/nginx/bden.host.compose.conf to /etc/nginx/sites-available/bden and reload Nginx." >&2
+                        fi
+
+                        echo compose > .bden_deploy_mode
+                    }
+
                     publish_image "${PROD_PROJECT}-frontend:latest" frontend
                     publish_image "${PROD_PROJECT}-auth-service:latest" auth-service
                     publish_image "${PROD_PROJECT}-donor-service:latest" donor-service
@@ -302,7 +321,8 @@ EOF
                             kubectl get endpoints -n "${K8S_NAMESPACE}" || true
                             kubectl describe pod bden-network-check -n "${K8S_NAMESPACE}" || true
                             kubectl delete pod bden-network-check -n "${K8S_NAMESPACE}" --ignore-not-found=true
-                            exit 1
+                            deploy_compose_fallback "Kubernetes pod network cannot reach ${target}."
+                            exit 0
                         fi
                     done
 
@@ -535,9 +555,13 @@ EOF
                     else
                         echo "WARNING: Jenkins cannot update host Nginx without sudo. Ensure /etc/nginx/sites-available/bden proxies bden.hinkaku.tech to http://127.0.0.1:30080"
                     fi
+
+                    echo k8s > .bden_deploy_mode
                 '''
                 sh '''
                     set -eu
+
+                    DEPLOY_MODE="$(cat .bden_deploy_mode 2>/dev/null || echo k8s)"
 
                     check_url() {
                         name="$1"
@@ -559,12 +583,22 @@ EOF
                         exit 1
                     }
 
-                    check_url gateway "http://127.0.0.1:30080/health/"
-                    check_url auth "http://127.0.0.1:30080/health/auth/"
-                    check_url donor "http://127.0.0.1:30080/health/donor/"
-                    check_url request "http://127.0.0.1:30080/health/request/"
-                    check_url campaign "http://127.0.0.1:30080/health/campaign/"
-                    check_url notification "http://127.0.0.1:30080/health/notification/"
+                    if [ "${DEPLOY_MODE}" = "compose" ]; then
+                        check_url frontend "http://127.0.0.1:8088/health/"
+                        check_url gateway "http://127.0.0.1:8080/health/"
+                        check_url auth "http://127.0.0.1:8080/health/auth/"
+                        check_url donor "http://127.0.0.1:8080/health/donor/"
+                        check_url request "http://127.0.0.1:8080/health/request/"
+                        check_url campaign "http://127.0.0.1:8080/health/campaign/"
+                        check_url notification "http://127.0.0.1:8080/health/notification/"
+                    else
+                        check_url gateway "http://127.0.0.1:30080/health/"
+                        check_url auth "http://127.0.0.1:30080/health/auth/"
+                        check_url donor "http://127.0.0.1:30080/health/donor/"
+                        check_url request "http://127.0.0.1:30080/health/request/"
+                        check_url campaign "http://127.0.0.1:30080/health/campaign/"
+                        check_url notification "http://127.0.0.1:30080/health/notification/"
+                    fi
                 '''
             }
         }
