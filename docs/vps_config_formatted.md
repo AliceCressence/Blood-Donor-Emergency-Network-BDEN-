@@ -2094,7 +2094,7 @@ Only host Nginx should be public on `80` and `443`. Kubernetes exposes the app i
 | BDEN gateway | `127.0.0.1:30080` |
 | Local image registry | `127.0.0.1:5000` |
 | App services | ClusterIP inside `bden-prod` namespace |
-| Databases and Redis | ClusterIP/StatefulSet inside `bden-prod` namespace |
+| Databases and Redis | StatefulSet pods with Services; Jenkins temporarily wires endpoint IPs while k3s DNS/service routing is unstable |
 
 > ⚠️ Do not open `30080`, `5000`, service ports, database ports, or Redis publicly in Lightsail. Host Nginx is still the only public entry point.
 
@@ -2524,7 +2524,9 @@ Then rerun the Jenkins deploy. The current Jenkinsfile includes this DNS preflig
 
 `infrastructure/k8s/network-policy.yaml` intentionally permits runtime traffic inside `bden-prod` and DNS traffic to CoreDNS. This avoids accidental default-deny behavior while the production MVP is still being stabilized. Tighten this later once the deployment is green.
 
-The Jenkinsfile also has a temporary ClusterIP bypass for this exact issue. If CoreDNS still cannot resolve service names, Jenkins continues by reading the Kubernetes `ClusterIP` values for the DB, Redis, frontend, and backend services, then injects those IPs into the Django deployments and regenerates the gateway ConfigMap with direct upstream IPs. This is acceptable as a VPS bootstrap workaround because ClusterIPs are stable until the Kubernetes Service objects are deleted and recreated.
+The Jenkinsfile also has a temporary IP-based bypass for this exact issue. If CoreDNS still cannot resolve service names, Jenkins continues by reading the Kubernetes endpoint IPs for DB/Redis and the `ClusterIP` values for frontend/backend services, then injects those IPs into the Django deployments and regenerates the gateway ConfigMap with direct upstream IPs.
+
+DB/Redis use endpoint IPs instead of ClusterIPs because this VPS k3s install has shown both DNS and ClusterIP service routing instability. This is a bootstrap workaround, not the final ideal state.
 
 Once CoreDNS is healthy, remove the bypass and return to normal Kubernetes service DNS names.
 
