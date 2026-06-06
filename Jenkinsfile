@@ -266,6 +266,20 @@ EOF
                     rollout_status statefulset notification-db 180s
                     rollout_status statefulset redis 180s
 
+                    service_ip() {
+                        kubectl get svc "$1" -n "${K8S_NAMESPACE}" -o jsonpath='{.spec.clusterIP}'
+                    }
+
+                    AUTH_DB_IP="$(service_ip auth-db)"
+                    DONOR_DB_IP="$(service_ip donor-db)"
+                    REQUEST_DB_IP="$(service_ip request-db)"
+                    CAMPAIGN_DB_IP="$(service_ip campaign-db)"
+                    NOTIFICATION_DB_IP="$(service_ip notification-db)"
+                    REDIS_IP="$(service_ip redis)"
+
+                    echo "Using data service ClusterIPs:"
+                    echo "auth-db=${AUTH_DB_IP} donor-db=${DONOR_DB_IP} request-db=${REQUEST_DB_IP} campaign-db=${CAMPAIGN_DB_IP} notification-db=${NOTIFICATION_DB_IP} redis=${REDIS_IP}"
+
                     echo "--- Verifying Kubernetes DNS before app rollout ---"
                     rollout_status deployment coredns 180s kube-system
                     kubectl get networkpolicy -A
@@ -337,16 +351,133 @@ EOF
                     fi
 
                     if [ "${dns_ok}" != "true" ]; then
-                        echo "ERROR: Kubernetes DNS cannot resolve auth-db.${K8S_NAMESPACE}.svc.cluster.local" >&2
+                        echo "WARNING: Kubernetes DNS cannot resolve auth-db.${K8S_NAMESPACE}.svc.cluster.local. Continuing with ClusterIP-based service wiring." >&2
                         kubectl get pods -n kube-system -o wide || true
                         kubectl logs -n kube-system deployment/coredns --all-containers --tail=200 || true
                         kubectl describe deployment/coredns -n kube-system || true
-                        exit 1
                     fi
 
                     kubectl apply -f infrastructure/k8s/app-services.yaml
                     kubectl apply -f infrastructure/k8s/event-consumers.yaml
                     kubectl apply -f infrastructure/k8s/frontend-gateway.yaml
+
+                    AUTH_SERVICE_IP="$(service_ip auth-service)"
+                    DONOR_SERVICE_IP="$(service_ip donor-service)"
+                    REQUEST_SERVICE_IP="$(service_ip request-service)"
+                    CAMPAIGN_SERVICE_IP="$(service_ip campaign-service)"
+                    NOTIFICATION_SERVICE_IP="$(service_ip notification-service)"
+                    FRONTEND_IP="$(service_ip frontend)"
+
+                    echo "Using app service ClusterIPs:"
+                    echo "auth=${AUTH_SERVICE_IP} donor=${DONOR_SERVICE_IP} request=${REQUEST_SERVICE_IP} campaign=${CAMPAIGN_SERVICE_IP} notification=${NOTIFICATION_SERVICE_IP} frontend=${FRONTEND_IP}"
+
+                    kubectl set env deployment/auth-service -n "${K8S_NAMESPACE}" \
+                        AUTH_DB_HOST="${AUTH_DB_IP}" \
+                        REDIS_URL="redis://${REDIS_IP}:6379/0" \
+                        DONOR_SERVICE_INTERNAL_URL="http://${DONOR_SERVICE_IP}:8002" \
+                        WAIT_FOR_HOSTS="${AUTH_DB_IP}:5432,${REDIS_IP}:6379"
+
+                    kubectl set env deployment/donor-service -n "${K8S_NAMESPACE}" \
+                        DONOR_DB_HOST="${DONOR_DB_IP}" \
+                        REDIS_URL="redis://${REDIS_IP}:6379/0" \
+                        REDIS_CACHE_URL="redis://${REDIS_IP}:6379/1" \
+                        AUTH_SERVICE_INTERNAL_URL="http://${AUTH_SERVICE_IP}:8001" \
+                        REQUEST_SERVICE_INTERNAL_URL="http://${REQUEST_SERVICE_IP}:8003" \
+                        WAIT_FOR_HOSTS="${DONOR_DB_IP}:5432,${REDIS_IP}:6379"
+
+                    kubectl set env deployment/request-service -n "${K8S_NAMESPACE}" \
+                        REQUEST_DB_HOST="${REQUEST_DB_IP}" \
+                        REDIS_URL="redis://${REDIS_IP}:6379/0" \
+                        DONOR_SERVICE_URL="http://${DONOR_SERVICE_IP}:8002" \
+                        NOTIFICATION_SERVICE_URL="http://${NOTIFICATION_SERVICE_IP}:8005" \
+                        WAIT_FOR_HOSTS="${REQUEST_DB_IP}:5432,${REDIS_IP}:6379"
+
+                    kubectl set env deployment/campaign-service -n "${K8S_NAMESPACE}" \
+                        CAMPAIGN_DB_HOST="${CAMPAIGN_DB_IP}" \
+                        REDIS_URL="redis://${REDIS_IP}:6379/0" \
+                        DONOR_SERVICE_INTERNAL_URL="http://${DONOR_SERVICE_IP}:8002" \
+                        WAIT_FOR_HOSTS="${CAMPAIGN_DB_IP}:5432,${REDIS_IP}:6379"
+
+                    kubectl set env deployment/notification-service -n "${K8S_NAMESPACE}" \
+                        NOTIFICATION_DB_HOST="${NOTIFICATION_DB_IP}" \
+                        REDIS_URL="redis://${REDIS_IP}:6379/0" \
+                        WAIT_FOR_HOSTS="${NOTIFICATION_DB_IP}:5432,${REDIS_IP}:6379"
+
+                    kubectl set env deployment/donor-event-consumer -n "${K8S_NAMESPACE}" \
+                        DONOR_DB_HOST="${DONOR_DB_IP}" \
+                        REDIS_URL="redis://${REDIS_IP}:6379/0" \
+                        REDIS_CACHE_URL="redis://${REDIS_IP}:6379/1" \
+                        WAIT_FOR_HOSTS="${DONOR_DB_IP}:5432,${REDIS_IP}:6379"
+
+                    kubectl set env deployment/request-event-consumer -n "${K8S_NAMESPACE}" \
+                        REQUEST_DB_HOST="${REQUEST_DB_IP}" \
+                        REDIS_URL="redis://${REDIS_IP}:6379/0" \
+                        WAIT_FOR_HOSTS="${REQUEST_DB_IP}:5432,${REDIS_IP}:6379"
+
+                    kubectl set env deployment/notification-event-consumer -n "${K8S_NAMESPACE}" \
+                        NOTIFICATION_DB_HOST="${NOTIFICATION_DB_IP}" \
+                        REDIS_URL="redis://${REDIS_IP}:6379/0" \
+                        WAIT_FOR_HOSTS="${NOTIFICATION_DB_IP}:5432,${REDIS_IP}:6379"
+
+                    cat > /tmp/bden-gateway-default.conf <<EOF
+upstream frontend_app         { server ${FRONTEND_IP}:80; }
+upstream auth_service         { server ${AUTH_SERVICE_IP}:8001; }
+upstream donor_service        { server ${DONOR_SERVICE_IP}:8002; }
+upstream request_service      { server ${REQUEST_SERVICE_IP}:8003; }
+upstream campaign_service     { server ${CAMPAIGN_SERVICE_IP}:8004; }
+upstream notification_service { server ${NOTIFICATION_SERVICE_IP}:8005; }
+
+server {
+  listen 80;
+  server_name _;
+  client_max_body_size 10m;
+
+  proxy_set_header Host \$host;
+  proxy_set_header X-Real-IP \$remote_addr;
+  proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+  proxy_set_header X-Forwarded-Proto \$scheme;
+
+  location = /health/ {
+    default_type application/json;
+    return 200 '{"service":"BDEN Kubernetes Gateway","status":"ok"}';
+  }
+
+  location /api/donor/docs/     { proxy_pass http://donor_service/api/docs/; }
+  location /api/donor/redoc/    { proxy_pass http://donor_service/api/redoc/; }
+  location /api/campaign/docs/  { proxy_pass http://campaign_service/api/docs/; }
+  location /api/campaign/redoc/ { proxy_pass http://campaign_service/api/redoc/; }
+
+  location /api/docs/           { proxy_pass http://auth_service; }
+  location /api/schema.json     { proxy_pass http://auth_service; }
+  location /api/auth/           { proxy_pass http://auth_service; }
+  location /api/admin/          { proxy_pass http://auth_service; }
+  location /django-admin/auth/  { proxy_pass http://auth_service/django-admin/; }
+  location /django-admin/donor/ { proxy_pass http://donor_service/django-admin/; }
+
+  location /api/donors/         { proxy_pass http://donor_service; }
+  location /api/estimation/     { proxy_pass http://donor_service; }
+  location /api/requests/       { proxy_pass http://request_service; }
+  location /api/campaigns/      { proxy_pass http://campaign_service; }
+  location /api/myths/          { proxy_pass http://campaign_service; }
+  location /api/ads/            { proxy_pass http://campaign_service; }
+  location /api/notifications/  { proxy_pass http://notification_service; }
+
+  location /health/auth/         { proxy_pass http://auth_service/health/; }
+  location /health/donor/        { proxy_pass http://donor_service/health/; }
+  location /health/request/      { proxy_pass http://request_service/health/; }
+  location /health/campaign/     { proxy_pass http://campaign_service/health/; }
+  location /health/notification/ { proxy_pass http://notification_service/health/; }
+
+  location / {
+    proxy_pass http://frontend_app;
+  }
+}
+EOF
+
+                    kubectl create configmap gateway-nginx-config \
+                        -n "${K8S_NAMESPACE}" \
+                        --from-file=default.conf=/tmp/bden-gateway-default.conf \
+                        --dry-run=client -o yaml | kubectl apply -f -
 
                     kubectl set image deployment/frontend frontend="${LOCAL_REGISTRY}/bden/frontend:${BUILD_NUMBER}" -n "${K8S_NAMESPACE}"
                     kubectl set image deployment/auth-service auth-service="${LOCAL_REGISTRY}/bden/auth-service:${BUILD_NUMBER}" -n "${K8S_NAMESPACE}"
