@@ -270,15 +270,43 @@ EOF
                         kubectl get svc "$1" -n "${K8S_NAMESPACE}" -o jsonpath='{.spec.clusterIP}'
                     }
 
-                    AUTH_DB_IP="$(service_ip auth-db)"
-                    DONOR_DB_IP="$(service_ip donor-db)"
-                    REQUEST_DB_IP="$(service_ip request-db)"
-                    CAMPAIGN_DB_IP="$(service_ip campaign-db)"
-                    NOTIFICATION_DB_IP="$(service_ip notification-db)"
-                    REDIS_IP="$(service_ip redis)"
+                    endpoint_ip() {
+                        kubectl get endpoints "$1" -n "${K8S_NAMESPACE}" -o jsonpath='{.subsets[0].addresses[0].ip}'
+                    }
 
-                    echo "Using data service ClusterIPs:"
+                    AUTH_DB_IP="$(endpoint_ip auth-db)"
+                    DONOR_DB_IP="$(endpoint_ip donor-db)"
+                    REQUEST_DB_IP="$(endpoint_ip request-db)"
+                    CAMPAIGN_DB_IP="$(endpoint_ip campaign-db)"
+                    NOTIFICATION_DB_IP="$(endpoint_ip notification-db)"
+                    REDIS_IP="$(endpoint_ip redis)"
+
+                    echo "Using data endpoint IPs:"
                     echo "auth-db=${AUTH_DB_IP} donor-db=${DONOR_DB_IP} request-db=${REQUEST_DB_IP} campaign-db=${CAMPAIGN_DB_IP} notification-db=${NOTIFICATION_DB_IP} redis=${REDIS_IP}"
+
+                    echo "--- Verifying pod-to-pod connectivity to data endpoints ---"
+                    kubectl delete pod bden-network-check -n "${K8S_NAMESPACE}" --ignore-not-found=true
+                    kubectl run bden-network-check \
+                        -n "${K8S_NAMESPACE}" \
+                        --image=busybox:1.36 \
+                        --restart=Never \
+                        --command -- sleep 300
+                    kubectl wait --for=condition=Ready pod/bden-network-check -n "${K8S_NAMESPACE}" --timeout=90s
+
+                    for target in "${AUTH_DB_IP}:5432" "${DONOR_DB_IP}:5432" "${REQUEST_DB_IP}:5432" "${CAMPAIGN_DB_IP}:5432" "${NOTIFICATION_DB_IP}:5432" "${REDIS_IP}:6379"; do
+                        host="${target%:*}"
+                        port="${target#*:}"
+                        if ! kubectl exec -n "${K8S_NAMESPACE}" bden-network-check -- nc -w 5 -z "${host}" "${port}"; then
+                            echo "ERROR: Kubernetes pod network cannot reach ${target}" >&2
+                            kubectl get pods -n "${K8S_NAMESPACE}" -o wide || true
+                            kubectl get endpoints -n "${K8S_NAMESPACE}" || true
+                            kubectl describe pod bden-network-check -n "${K8S_NAMESPACE}" || true
+                            kubectl delete pod bden-network-check -n "${K8S_NAMESPACE}" --ignore-not-found=true
+                            exit 1
+                        fi
+                    done
+
+                    kubectl delete pod bden-network-check -n "${K8S_NAMESPACE}" --ignore-not-found=true
 
                     echo "--- Verifying Kubernetes DNS before app rollout ---"
                     rollout_status deployment coredns 180s kube-system
@@ -351,7 +379,7 @@ EOF
                     fi
 
                     if [ "${dns_ok}" != "true" ]; then
-                        echo "WARNING: Kubernetes DNS cannot resolve auth-db.${K8S_NAMESPACE}.svc.cluster.local. Continuing with ClusterIP-based service wiring." >&2
+                        echo "WARNING: Kubernetes DNS cannot resolve auth-db.${K8S_NAMESPACE}.svc.cluster.local. Continuing with endpoint/ClusterIP-based service wiring." >&2
                         kubectl get pods -n kube-system -o wide || true
                         kubectl logs -n kube-system deployment/coredns --all-containers --tail=200 || true
                         kubectl describe deployment/coredns -n kube-system || true
