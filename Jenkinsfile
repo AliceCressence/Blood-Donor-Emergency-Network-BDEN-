@@ -419,6 +419,8 @@ EOF
                         REDIS_URL="redis://${REDIS_IP}:6379/0" \
                         WAIT_FOR_HOSTS="${NOTIFICATION_DB_IP}:5432,${REDIS_IP}:6379"
 
+                    DOLLAR='$'
+
                     cat > /tmp/bden-gateway-default.conf <<EOF
 upstream frontend_app         { server ${FRONTEND_IP}:80; }
 upstream auth_service         { server ${AUTH_SERVICE_IP}:8001; }
@@ -432,10 +434,10 @@ server {
   server_name _;
   client_max_body_size 10m;
 
-  proxy_set_header Host \$host;
-  proxy_set_header X-Real-IP \$remote_addr;
-  proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-  proxy_set_header X-Forwarded-Proto \$scheme;
+  proxy_set_header Host ${DOLLAR}host;
+  proxy_set_header X-Real-IP ${DOLLAR}remote_addr;
+  proxy_set_header X-Forwarded-For ${DOLLAR}proxy_add_x_forwarded_for;
+  proxy_set_header X-Forwarded-Proto ${DOLLAR}scheme;
 
   location = /health/ {
     default_type application/json;
