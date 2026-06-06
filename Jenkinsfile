@@ -177,20 +177,21 @@ pipeline {
                         kind="$1"
                         name="$2"
                         timeout="${3:-240s}"
+                        namespace="${4:-$K8S_NAMESPACE}"
 
-                        if kubectl rollout status "${kind}/${name}" -n "${K8S_NAMESPACE}" --timeout="${timeout}"; then
+                        if kubectl rollout status "${kind}/${name}" -n "${namespace}" --timeout="${timeout}"; then
                             return 0
                         fi
 
                         echo "ERROR: rollout failed for ${kind}/${name}" >&2
                         echo "--- Pods ---" >&2
-                        kubectl get pods -n "${K8S_NAMESPACE}" -o wide || true
+                        kubectl get pods -n "${namespace}" -o wide || true
                         echo "--- ${kind}/${name} details ---" >&2
-                        kubectl describe "${kind}/${name}" -n "${K8S_NAMESPACE}" || true
+                        kubectl describe "${kind}/${name}" -n "${namespace}" || true
                         echo "--- Recent namespace events ---" >&2
-                        kubectl get events -n "${K8S_NAMESPACE}" --sort-by=.lastTimestamp | tail -120 || true
+                        kubectl get events -n "${namespace}" --sort-by=.lastTimestamp | tail -120 || true
                         echo "--- Logs for app=${name} ---" >&2
-                        kubectl logs -n "${K8S_NAMESPACE}" -l "app=${name}" --all-containers --tail=180 || true
+                        kubectl logs -n "${namespace}" -l "app=${name}" --all-containers --tail=180 || true
                         exit 1
                     }
 
@@ -251,6 +252,67 @@ EOF
                     rollout_status statefulset notification-db 180s
                     rollout_status statefulset redis 180s
 
+                    echo "--- Verifying Kubernetes DNS before app rollout ---"
+                    rollout_status deployment coredns 180s kube-system
+                    kubectl get svc auth-db donor-db request-db campaign-db notification-db redis -n "${K8S_NAMESPACE}"
+                    kubectl get endpoints auth-db donor-db request-db campaign-db notification-db redis -n "${K8S_NAMESPACE}"
+
+                    kubectl delete pod bden-dns-check -n "${K8S_NAMESPACE}" --ignore-not-found=true
+                    kubectl run bden-dns-check \
+                        -n "${K8S_NAMESPACE}" \
+                        --image=busybox:1.36 \
+                        --restart=Never \
+                        --command -- sleep 300
+                    kubectl wait --for=condition=Ready pod/bden-dns-check -n "${K8S_NAMESPACE}" --timeout=90s
+
+                    dns_ok=false
+                    for attempt in $(seq 1 30); do
+                        if kubectl exec -n "${K8S_NAMESPACE}" bden-dns-check -- nslookup "auth-db.${K8S_NAMESPACE}.svc.cluster.local"; then
+                            dns_ok=true
+                            break
+                        fi
+
+                        echo "Waiting for Kubernetes DNS to resolve auth-db (${attempt}/30)"
+                        sleep 5
+                    done
+
+                    kubectl delete pod bden-dns-check -n "${K8S_NAMESPACE}" --ignore-not-found=true
+
+                    if [ "${dns_ok}" != "true" ] && sudo -n true >/dev/null 2>&1; then
+                        echo "Kubernetes DNS did not resolve on first attempt. Restarting k3s once and retrying DNS preflight."
+                        sudo systemctl restart k3s
+                        kubectl wait --for=condition=Ready node --all --timeout=180s
+                        rollout_status deployment coredns 180s kube-system
+
+                        kubectl delete pod bden-dns-check -n "${K8S_NAMESPACE}" --ignore-not-found=true
+                        kubectl run bden-dns-check \
+                            -n "${K8S_NAMESPACE}" \
+                            --image=busybox:1.36 \
+                            --restart=Never \
+                            --command -- sleep 300
+                        kubectl wait --for=condition=Ready pod/bden-dns-check -n "${K8S_NAMESPACE}" --timeout=90s
+
+                        for attempt in $(seq 1 30); do
+                            if kubectl exec -n "${K8S_NAMESPACE}" bden-dns-check -- nslookup "auth-db.${K8S_NAMESPACE}.svc.cluster.local"; then
+                                dns_ok=true
+                                break
+                            fi
+
+                            echo "Waiting for Kubernetes DNS after k3s restart (${attempt}/30)"
+                            sleep 5
+                        done
+
+                        kubectl delete pod bden-dns-check -n "${K8S_NAMESPACE}" --ignore-not-found=true
+                    fi
+
+                    if [ "${dns_ok}" != "true" ]; then
+                        echo "ERROR: Kubernetes DNS cannot resolve auth-db.${K8S_NAMESPACE}.svc.cluster.local" >&2
+                        kubectl get pods -n kube-system -o wide || true
+                        kubectl logs -n kube-system deployment/coredns --all-containers --tail=200 || true
+                        kubectl describe deployment/coredns -n kube-system || true
+                        exit 1
+                    fi
+
                     kubectl apply -f infrastructure/k8s/app-services.yaml
                     kubectl apply -f infrastructure/k8s/event-consumers.yaml
                     kubectl apply -f infrastructure/k8s/frontend-gateway.yaml
@@ -266,13 +328,13 @@ EOF
                     kubectl set image deployment/notification-event-consumer notification-event-consumer="${LOCAL_REGISTRY}/bden/notification-service:${BUILD_NUMBER}" -n "${K8S_NAMESPACE}"
                     kubectl rollout restart deployment/gateway -n "${K8S_NAMESPACE}"
 
-                    rollout_status deployment frontend 240s
-                    rollout_status deployment auth-service 240s
-                    rollout_status deployment donor-service 240s
-                    rollout_status deployment request-service 240s
-                    rollout_status deployment campaign-service 240s
-                    rollout_status deployment notification-service 240s
-                    rollout_status deployment gateway 240s
+                    rollout_status deployment frontend 900s
+                    rollout_status deployment auth-service 900s
+                    rollout_status deployment donor-service 900s
+                    rollout_status deployment request-service 900s
+                    rollout_status deployment campaign-service 900s
+                    rollout_status deployment notification-service 900s
+                    rollout_status deployment gateway 900s
 
                     if sudo -n true >/dev/null 2>&1; then
                         sudo cp infrastructure/nginx/bden.host.k8s.conf /etc/nginx/sites-available/bden

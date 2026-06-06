@@ -23,11 +23,12 @@ spec:
           env:
             - { name: DJANGO_SETTINGS_MODULE, value: config.settings.prod }
             - { name: DEBUG, value: "False" }
-            - { name: DONOR_DB_HOST, value: donor-db }
+            - { name: DONOR_DB_HOST, value: donor-db.bden-prod.svc.cluster.local }
             - { name: DONOR_DB_PORT, value: "5432" }
-            - { name: REDIS_URL, value: redis://redis:6379/0 }
-            - { name: REDIS_CACHE_URL, value: redis://redis:6379/1 }
-            - { name: WAIT_FOR_HOSTS, value: donor-db:5432,redis:6379 }
+            - { name: REDIS_URL, value: redis://redis.bden-prod.svc.cluster.local:6379/0 }
+            - { name: REDIS_CACHE_URL, value: redis://redis.bden-prod.svc.cluster.local:6379/1 }
+            - { name: WAIT_FOR_HOSTS, value: donor-db.bden-prod.svc.cluster.local:5432,redis.bden-prod.svc.cluster.local:6379 }
+            - { name: WAIT_FOR_TIMEOUT, value: "900" }
           command: ["sh", "-c", "python wait_for.py && python manage.py consume_events"]
 ---
 apiVersion: apps/v1
@@ -55,10 +56,11 @@ spec:
           env:
             - { name: DJANGO_SETTINGS_MODULE, value: config.settings.prod }
             - { name: DEBUG, value: "False" }
-            - { name: REQUEST_DB_HOST, value: request-db }
+            - { name: REQUEST_DB_HOST, value: request-db.bden-prod.svc.cluster.local }
             - { name: REQUEST_DB_PORT, value: "5432" }
-            - { name: REDIS_URL, value: redis://redis:6379/0 }
-            - { name: WAIT_FOR_HOSTS, value: request-db:5432,redis:6379 }
+            - { name: REDIS_URL, value: redis://redis.bden-prod.svc.cluster.local:6379/0 }
+            - { name: WAIT_FOR_HOSTS, value: request-db.bden-prod.svc.cluster.local:5432,redis.bden-prod.svc.cluster.local:6379 }
+            - { name: WAIT_FOR_TIMEOUT, value: "900" }
           command: ["sh", "-c", "python wait_for.py && python manage.py consume_events"]
 ---
 apiVersion: apps/v1
@@ -86,8 +88,9 @@ spec:
           env:
             - { name: DJANGO_SETTINGS_MODULE, value: config.settings.prod }
             - { name: DEBUG, value: "False" }
-            - { name: NOTIFICATION_DB_HOST, value: notification-db }
+            - { name: NOTIFICATION_DB_HOST, value: notification-db.bden-prod.svc.cluster.local }
             - { name: NOTIFICATION_DB_PORT, value: "5432" }
-            - { name: REDIS_URL, value: redis://redis:6379/0 }
-            - { name: WAIT_FOR_HOSTS, value: notification-db:5432,redis:6379 }
+            - { name: REDIS_URL, value: redis://redis.bden-prod.svc.cluster.local:6379/0 }
+            - { name: WAIT_FOR_HOSTS, value: notification-db.bden-prod.svc.cluster.local:5432,redis.bden-prod.svc.cluster.local:6379 }
+            - { name: WAIT_FOR_TIMEOUT, value: "900" }
           command: ["sh", "-c", "python wait_for.py && python manage.py consume_events"]
