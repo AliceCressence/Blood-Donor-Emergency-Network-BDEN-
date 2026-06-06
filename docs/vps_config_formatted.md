@@ -2520,9 +2520,13 @@ kubectl wait --for=condition=Ready node --all --timeout=180s
 kubectl rollout status deployment/coredns -n kube-system --timeout=180s
 ```
 
-Then rerun the Jenkins deploy. The current Jenkinsfile includes this DNS preflight and will stop early with CoreDNS logs if cluster DNS is still broken.
+Then rerun the Jenkins deploy. The current Jenkinsfile includes this DNS preflight and prints CoreDNS logs if cluster DNS is still broken.
 
 `infrastructure/k8s/network-policy.yaml` intentionally permits runtime traffic inside `bden-prod` and DNS traffic to CoreDNS. This avoids accidental default-deny behavior while the production MVP is still being stabilized. Tighten this later once the deployment is green.
+
+The Jenkinsfile also has a temporary ClusterIP bypass for this exact issue. If CoreDNS still cannot resolve service names, Jenkins continues by reading the Kubernetes `ClusterIP` values for the DB, Redis, frontend, and backend services, then injects those IPs into the Django deployments and regenerates the gateway ConfigMap with direct upstream IPs. This is acceptable as a VPS bootstrap workaround because ClusterIPs are stable until the Kubernetes Service objects are deleted and recreated.
+
+Once CoreDNS is healthy, remove the bypass and return to normal Kubernetes service DNS names.
 
 ### Jenkins not triggering on push
 
