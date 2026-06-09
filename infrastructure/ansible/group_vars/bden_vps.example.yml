@@ -9,7 +9,7 @@ bden_linux_user: bitnami
 
 jenkins_http_port: 8090
 grafana_http_port: 3002
-prometheus_http_port: 9091
+prometheus_http_port: 9093
 
 bden_compose_frontend_port: 8088
 bden_compose_gateway_port: 8080

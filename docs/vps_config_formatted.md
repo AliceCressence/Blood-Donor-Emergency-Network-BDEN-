@@ -130,7 +130,7 @@ Public ports `80` and `443` should be owned by one public entry point only. For 
 | Redis | 6379 (internal) | 6380 |
 | k3s API | 6443 | internal only |
 | Jenkins | — | **8090** |
-| Prometheus | — | 9091 |
+| Prometheus | — | 9093 |
 | Grafana | — | **3002** |
 
 > ⚠️ **WARNING:** If Bitnami Apache is still listening on `80` or `443`, Nginx will not be able to bind those ports. Resolve that before creating BDEN's public Nginx config.
@@ -1564,7 +1564,7 @@ At minimum, replace:
 For the current domain/IP situation, keep both the domain and raw IP where useful:
 
 ```env
-ALLOWED_HOSTS=bden.hinkaku.tech,3.77.183.190,localhost,127.0.0.1,auth-service,donor-service,request-service,campaign-service,notification-service
+ALLOWED_HOSTS=bden.hinkaku.tech,3.77.183.190,localhost,127.0.0.1,host.docker.internal,auth-service,donor-service,request-service,campaign-service,notification-service
 FRONTEND_URL=https://bden.hinkaku.tech
 VITE_API_BASE_URL=https://bden.hinkaku.tech
 GOOGLE_REDIRECT_URI=https://bden.hinkaku.tech/auth/google/callback
@@ -1683,8 +1683,8 @@ The Prometheus scrape targets are:
 If Grafana dashboards show `No data` or `N/A`, first check Prometheus targets:
 
 ```bash
-curl -fsS http://127.0.0.1:9091/-/healthy
-curl -fsS "http://127.0.0.1:9091/api/v1/targets" | python3 -m json.tool
+curl -fsS http://127.0.0.1:9093/-/healthy
+curl -fsS "http://127.0.0.1:9093/api/v1/targets" | python3 -m json.tool
 ```
 
 All `bden-*` targets should be `up`. If they are down, restart monitoring from the repo:
@@ -1762,7 +1762,7 @@ services:
     container_name: bden-prometheus
     restart: unless-stopped
     ports:
-      - "9091:9090"
+      - "127.0.0.1:9093:9090"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./prometheus/data:/prometheus
@@ -2424,7 +2424,7 @@ curl -fsS -H "Host: bden.hinkaku.tech" http://127.0.0.1:30080/health/auth/
 That matters because Django validates `ALLOWED_HOSTS`. The server `.env.prod` should still include:
 
 ```dotenv
-ALLOWED_HOSTS=bden.hinkaku.tech,localhost,127.0.0.1,auth-service,donor-service,request-service,campaign-service,notification-service
+ALLOWED_HOSTS=bden.hinkaku.tech,localhost,127.0.0.1,host.docker.internal,auth-service,donor-service,request-service,campaign-service,notification-service
 ```
 
 ### 19.6 — Compose fallback
