@@ -1,0 +1,48 @@
+---
+- name: Deploy BDEN monitoring stack
+  hosts: bden_vps
+  become: true
+
+  tasks:
+    - name: Ensure monitoring directory exists
+      ansible.builtin.file:
+        path: /opt/bden-monitoring
+        state: directory
+        owner: "{{ bden_linux_user }}"
+        group: "{{ bden_linux_user }}"
+        mode: "0755"
+
+    - name: Copy monitoring compose and config
+      ansible.builtin.copy:
+        src: "{{ item.src }}"
+        dest: "/opt/bden-monitoring/{{ item.dest }}"
+        owner: "{{ bden_linux_user }}"
+        group: "{{ bden_linux_user }}"
+        mode: "0644"
+      loop:
+        - { src: ../../prometheus/docker-compose.yml, dest: docker-compose.yml }
+        - { src: ../../prometheus/prometheus.yml, dest: prometheus.yml }
+
+    - name: Copy Grafana provisioning files
+      ansible.builtin.copy:
+        src: ../../prometheus/grafana/
+        dest: /opt/bden-monitoring/grafana/
+        owner: "{{ bden_linux_user }}"
+        group: "{{ bden_linux_user }}"
+        mode: preserve
+
+    - name: Start monitoring stack
+      ansible.builtin.command:
+        cmd: docker compose up -d --remove-orphans
+      args:
+        chdir: /opt/bden-monitoring
+
+    - name: Check Prometheus health
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ prometheus_http_port }}/-/healthy"
+        status_code: 200
+
+    - name: Check Grafana health
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ grafana_http_port }}/api/health"
+        status_code: 200

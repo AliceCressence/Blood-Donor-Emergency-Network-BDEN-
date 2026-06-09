@@ -1,0 +1,25 @@
+---
+bden_domain: bden.hinkaku.tech
+bden_public_ip: 3.77.183.190
+bden_repo_url: https://github.com/AliceCressence/Blood-Donor-Emergency-Network-BDEN-.git
+bden_app_dir: /var/www/bden
+bden_env_file: /var/www/bden/.env.prod
+bden_project: bden-prod
+bden_linux_user: bitnami
+
+jenkins_http_port: 8090
+grafana_http_port: 3002
+prometheus_http_port: 9091
+
+bden_compose_frontend_port: 8088
+bden_compose_gateway_port: 8080
+bden_auth_db_port: 25432
+bden_donor_db_port: 25433
+bden_request_db_port: 25434
+bden_campaign_db_port: 25435
+bden_notification_db_port: 25436
+bden_redis_port: 26379
+
+install_jenkins: false
+install_k3s: true
+enable_ufw: true

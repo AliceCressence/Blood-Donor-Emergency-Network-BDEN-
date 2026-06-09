@@ -1,0 +1,173 @@
+---
+- name: Prepare BDEN VPS
+  hosts: bden_vps
+  become: true
+
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install base packages
+      ansible.builtin.apt:
+        name:
+          - ca-certificates
+          - curl
+          - fail2ban
+          - git
+          - gnupg
+          - htop
+          - nginx
+          - python3-pip
+          - rsync
+          - ufw
+          - unzip
+        state: present
+
+    - name: Install Docker package prerequisites
+      ansible.builtin.apt:
+        name:
+          - docker.io
+          - docker-compose-plugin
+        state: present
+
+    - name: Ensure Docker is enabled
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Add app user to docker group
+      ansible.builtin.user:
+        name: "{{ bden_linux_user }}"
+        groups: docker
+        append: true
+
+    - name: Deny incoming traffic by default
+      ansible.builtin.command: ufw default deny incoming
+      changed_when: false
+      when: enable_ufw | bool
+
+    - name: Allow outgoing traffic by default
+      ansible.builtin.command: ufw default allow outgoing
+      changed_when: false
+      when: enable_ufw | bool
+
+    - name: Allow required UFW ports
+      ansible.builtin.command: "ufw allow {{ item }}/tcp"
+      changed_when: false
+      loop:
+        - "22"
+        - "80"
+        - "443"
+        - "{{ jenkins_http_port }}"
+        - "{{ grafana_http_port }}"
+      when: enable_ufw | bool
+
+    - name: Enable UFW
+      ansible.builtin.command: ufw --force enable
+      changed_when: false
+      when: enable_ufw | bool
+
+    - name: Ensure application directory exists
+      ansible.builtin.file:
+        path: "{{ bden_app_dir }}"
+        state: directory
+        owner: "{{ bden_linux_user }}"
+        group: "{{ bden_linux_user }}"
+        mode: "0755"
+
+    - name: Clone or update BDEN repository
+      ansible.builtin.git:
+        repo: "{{ bden_repo_url }}"
+        dest: "{{ bden_app_dir }}"
+        version: main
+        update: true
+      become_user: "{{ bden_linux_user }}"
+
+    - name: Check production env file exists
+      ansible.builtin.stat:
+        path: "{{ bden_env_file }}"
+      register: bden_env
+
+    - name: Warn when production env is missing
+      ansible.builtin.debug:
+        msg: "Create {{ bden_env_file }} before deploying. Use .env.prod.example as the template."
+      when: not bden_env.stat.exists
+
+    - name: Install k3s when requested and missing
+      ansible.builtin.shell: curl -sfL https://get.k3s.io | sh -s - --write-kubeconfig-mode 644
+      args:
+        creates: /usr/local/bin/k3s
+      when: install_k3s | bool
+
+    - name: Ensure kube directory exists for app user
+      ansible.builtin.file:
+        path: "/home/{{ bden_linux_user }}/.kube"
+        state: directory
+        owner: "{{ bden_linux_user }}"
+        group: "{{ bden_linux_user }}"
+        mode: "0700"
+      when: install_k3s | bool
+
+    - name: Ensure kube config is available to app user
+      ansible.builtin.copy:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: "/home/{{ bden_linux_user }}/.kube/config"
+        remote_src: true
+        owner: "{{ bden_linux_user }}"
+        group: "{{ bden_linux_user }}"
+        mode: "0600"
+      when: install_k3s | bool
+
+    - name: Ensure monitoring directory exists
+      ansible.builtin.file:
+        path: /opt/bden-monitoring
+        state: directory
+        owner: "{{ bden_linux_user }}"
+        group: "{{ bden_linux_user }}"
+        mode: "0755"
+
+    - name: Copy monitoring compose and config
+      ansible.builtin.copy:
+        src: "{{ item.src }}"
+        dest: "/opt/bden-monitoring/{{ item.dest }}"
+        owner: "{{ bden_linux_user }}"
+        group: "{{ bden_linux_user }}"
+        mode: "0644"
+      loop:
+        - { src: ../../prometheus/docker-compose.yml, dest: docker-compose.yml }
+        - { src: ../../prometheus/prometheus.yml, dest: prometheus.yml }
+
+    - name: Copy Grafana provisioning files
+      ansible.builtin.copy:
+        src: ../../prometheus/grafana/
+        dest: /opt/bden-monitoring/grafana/
+        owner: "{{ bden_linux_user }}"
+        group: "{{ bden_linux_user }}"
+        mode: preserve
+
+    - name: Configure host Nginx for Compose fallback
+      ansible.builtin.template:
+        src: ../templates/bden-compose-nginx.conf.j2
+        dest: /etc/nginx/sites-available/bden
+        mode: "0644"
+      notify: Reload nginx
+
+    - name: Enable BDEN Nginx site
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/bden
+        dest: /etc/nginx/sites-enabled/bden
+        state: link
+      notify: Reload nginx
+
+    - name: Validate Nginx config
+      ansible.builtin.command: nginx -t
+      changed_when: false
+
+  handlers:
+    - name: Reload nginx
+      ansible.builtin.service:
+        name: nginx
+        state: reloaded
