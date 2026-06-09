@@ -1674,11 +1674,11 @@ The Prometheus scrape targets are:
 
 | Service | Target |
 |---------|--------|
-| auth-service | `host.docker.internal:8001/metrics/` |
-| donor-service | `host.docker.internal:8002/metrics/` |
-| request-service | `host.docker.internal:8003/metrics/` |
-| campaign-service | `host.docker.internal:8004/metrics/` |
-| notification-service | `host.docker.internal:8005/metrics/` |
+| auth-service | `host.docker.internal:18001/metrics/` |
+| donor-service | `host.docker.internal:18002/metrics/` |
+| request-service | `host.docker.internal:18003/metrics/` |
+| campaign-service | `host.docker.internal:18004/metrics/` |
+| notification-service | `host.docker.internal:18005/metrics/` |
 
 If Grafana dashboards show `No data` or `N/A`, first check Prometheus targets:
 

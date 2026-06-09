@@ -30,6 +30,11 @@
         CAMPAIGN_DB_HOST_PORT: "{{ bden_campaign_db_port }}"
         NOTIFICATION_DB_HOST_PORT: "{{ bden_notification_db_port }}"
         REDIS_HOST_PORT: "{{ bden_redis_port }}"
+        AUTH_SERVICE_HOST_PORT: "{{ bden_auth_service_port }}"
+        DONOR_SERVICE_HOST_PORT: "{{ bden_donor_service_port }}"
+        REQUEST_SERVICE_HOST_PORT: "{{ bden_request_service_port }}"
+        CAMPAIGN_SERVICE_HOST_PORT: "{{ bden_campaign_service_port }}"
+        NOTIFICATION_SERVICE_HOST_PORT: "{{ bden_notification_service_port }}"
 
     - name: Install Compose fallback Nginx config
       ansible.builtin.template:
