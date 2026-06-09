@@ -1362,6 +1362,26 @@ The production pipeline now uses two pieces together:
 - `docker-compose.prod.yml` builds production images locally on the VPS.
 - `infrastructure/k8s/*.yaml` runs the actual production stack in k3s.
 
+### Frontend-to-backend routing
+
+In production, the frontend should call the backend through the same public origin:
+
+```text
+https://bden.hinkaku.tech/api/...
+```
+
+Do not expose service ports `8001` through `8005` publicly. Host Nginx routes `/api/`, `/health/`, and `/django-admin/` to the internal gateway, and routes every other path to the frontend.
+
+The frontend API client also guards against accidental production builds with `VITE_API_BASE_URL=http://localhost:8000`. If the app is opened on a real domain and the configured API URL is localhost, it falls back to `window.location.origin`, so auth calls still go to `https://bden.hinkaku.tech/api/auth/...`.
+
+✅ **CHECK in the browser devtools Network tab:**
+
+```text
+POST https://bden.hinkaku.tech/api/auth/login/
+```
+
+If you see `localhost:8000` in production browser requests, rebuild and redeploy the frontend.
+
 Docker Compose remains useful as a fallback, but Kubernetes is now the target production runtime. On this VPS, keep both paths ready:
 
 - **Normal path:** k3s serves the stack through the Kubernetes gateway NodePort `30080`.
@@ -1640,6 +1660,46 @@ kubectl rollout status deployment/auth-service -n bden-prod --timeout=180s
 
 ---
 ## Section 13 — Prometheus and Grafana
+
+BDEN now keeps the monitoring runtime files in `infrastructure/prometheus/`:
+
+- `docker-compose.yml`
+- `prometheus.yml`
+- Grafana datasource provisioning
+- Grafana dashboard provisioning
+
+When BDEN is running through the Compose fallback, the Django services use host networking. Prometheus itself runs in a container, so it must scrape the services through `host.docker.internal`, not through Docker service names such as `auth-service` or `donor-service`.
+
+The Prometheus scrape targets are:
+
+| Service | Target |
+|---------|--------|
+| auth-service | `host.docker.internal:8001/metrics/` |
+| donor-service | `host.docker.internal:8002/metrics/` |
+| request-service | `host.docker.internal:8003/metrics/` |
+| campaign-service | `host.docker.internal:8004/metrics/` |
+| notification-service | `host.docker.internal:8005/metrics/` |
+
+If Grafana dashboards show `No data` or `N/A`, first check Prometheus targets:
+
+```bash
+curl -fsS http://127.0.0.1:9091/-/healthy
+curl -fsS "http://127.0.0.1:9091/api/v1/targets" | python3 -m json.tool
+```
+
+All `bden-*` targets should be `up`. If they are down, restart monitoring from the repo:
+
+```bash
+cd /var/www/bden/infrastructure/prometheus
+docker compose up -d --remove-orphans
+```
+
+Or with Ansible:
+
+```bash
+cd infrastructure/ansible
+ansible-playbook playbooks/deploy-monitoring.yml
+```
 
 ### 13.1 — Create directories
 

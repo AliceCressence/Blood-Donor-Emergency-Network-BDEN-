@@ -1,0 +1,66 @@
+---
+- name: Deploy BDEN Compose fallback
+  hosts: bden_vps
+  become: true
+
+  tasks:
+    - name: Pull latest main branch
+      ansible.builtin.git:
+        repo: "{{ bden_repo_url }}"
+        dest: "{{ bden_app_dir }}"
+        version: main
+        update: true
+      become_user: "{{ bden_linux_user }}"
+
+    - name: Start production Compose fallback
+      ansible.builtin.command:
+        cmd: >
+          docker compose --env-file {{ bden_env_file }}
+          -f docker-compose.prod.yml
+          -p {{ bden_project }}
+          up -d --build --remove-orphans
+      args:
+        chdir: "{{ bden_app_dir }}"
+      environment:
+        BDEN_GATEWAY_HOST_PORT: "{{ bden_compose_gateway_port }}"
+        BDEN_FRONTEND_HOST_PORT: "{{ bden_compose_frontend_port }}"
+        AUTH_DB_HOST_PORT: "{{ bden_auth_db_port }}"
+        DONOR_DB_HOST_PORT: "{{ bden_donor_db_port }}"
+        REQUEST_DB_HOST_PORT: "{{ bden_request_db_port }}"
+        CAMPAIGN_DB_HOST_PORT: "{{ bden_campaign_db_port }}"
+        NOTIFICATION_DB_HOST_PORT: "{{ bden_notification_db_port }}"
+        REDIS_HOST_PORT: "{{ bden_redis_port }}"
+
+    - name: Install Compose fallback Nginx config
+      ansible.builtin.template:
+        src: ../templates/bden-compose-nginx.conf.j2
+        dest: /etc/nginx/sites-available/bden
+        mode: "0644"
+      notify: Reload nginx
+
+    - name: Enable BDEN Nginx site
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/bden
+        dest: /etc/nginx/sites-enabled/bden
+        state: link
+      notify: Reload nginx
+
+    - name: Validate Nginx config
+      ansible.builtin.command: nginx -t
+      changed_when: false
+
+    - name: Check frontend health
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ bden_compose_frontend_port }}/health/"
+        status_code: 200
+
+    - name: Check gateway health
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ bden_compose_gateway_port }}/health/"
+        status_code: 200
+
+  handlers:
+    - name: Reload nginx
+      ansible.builtin.service:
+        name: nginx
+        state: reloaded
