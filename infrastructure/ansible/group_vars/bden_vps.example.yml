@@ -19,6 +19,11 @@ bden_request_db_port: 25434
 bden_campaign_db_port: 25435
 bden_notification_db_port: 25436
 bden_redis_port: 26379
+bden_auth_service_port: 18001
+bden_donor_service_port: 18002
+bden_request_service_port: 18003
+bden_campaign_service_port: 18004
+bden_notification_service_port: 18005
 
 install_jenkins: false
 install_k3s: true

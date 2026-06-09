@@ -10,24 +10,24 @@ scrape_configs:
   - job_name: bden-auth-service
     metrics_path: /metrics/
     static_configs:
-      - targets: ["host.docker.internal:8001"]
+      - targets: ["host.docker.internal:18001"]
 
   - job_name: bden-donor-service
     metrics_path: /metrics/
     static_configs:
-      - targets: ["host.docker.internal:8002"]
+      - targets: ["host.docker.internal:18002"]
 
   - job_name: bden-request-service
     metrics_path: /metrics/
     static_configs:
-      - targets: ["host.docker.internal:8003"]
+      - targets: ["host.docker.internal:18003"]
 
   - job_name: bden-campaign-service
     metrics_path: /metrics/
     static_configs:
-      - targets: ["host.docker.internal:8004"]
+      - targets: ["host.docker.internal:18004"]
 
   - job_name: bden-notification-service
     metrics_path: /metrics/
     static_configs:
-      - targets: ["host.docker.internal:8005"]
+      - targets: ["host.docker.internal:18005"]

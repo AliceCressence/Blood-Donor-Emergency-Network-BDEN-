@@ -257,10 +257,16 @@ EOF
                         export CAMPAIGN_DB_HOST_PORT=25435
                         export NOTIFICATION_DB_HOST_PORT=25436
                         export REDIS_HOST_PORT=26379
+                        export AUTH_SERVICE_HOST_PORT=18001
+                        export DONOR_SERVICE_HOST_PORT=18002
+                        export REQUEST_SERVICE_HOST_PORT=18003
+                        export CAMPAIGN_SERVICE_HOST_PORT=18004
+                        export NOTIFICATION_SERVICE_HOST_PORT=18005
 
                         echo "Using Compose fallback host ports:"
                         echo "frontend=${BDEN_FRONTEND_HOST_PORT} gateway=${BDEN_GATEWAY_HOST_PORT}"
                         echo "auth-db=${AUTH_DB_HOST_PORT} donor-db=${DONOR_DB_HOST_PORT} request-db=${REQUEST_DB_HOST_PORT} campaign-db=${CAMPAIGN_DB_HOST_PORT} notification-db=${NOTIFICATION_DB_HOST_PORT} redis=${REDIS_HOST_PORT}"
+                        echo "auth-service=${AUTH_SERVICE_HOST_PORT} donor-service=${DONOR_SERVICE_HOST_PORT} request-service=${REQUEST_SERVICE_HOST_PORT} campaign-service=${CAMPAIGN_SERVICE_HOST_PORT} notification-service=${NOTIFICATION_SERVICE_HOST_PORT}"
 
                         docker compose --env-file "${RESOLVED_PROD_ENV_FILE}" -f docker-compose.prod.yml -p "${PROD_PROJECT}" up -d --remove-orphans
                         docker compose --env-file "${RESOLVED_PROD_ENV_FILE}" -f docker-compose.prod.yml -p "${PROD_PROJECT}" ps
