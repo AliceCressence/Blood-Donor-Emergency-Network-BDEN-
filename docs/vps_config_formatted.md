@@ -1670,6 +1670,14 @@ BDEN now keeps the monitoring runtime files in `infrastructure/prometheus/`:
 
 When BDEN is running through the Compose fallback, the Django services use host networking. Prometheus itself runs in a container, so it must scrape the services through `host.docker.internal`, not through Docker service names such as `auth-service` or `donor-service`.
 
+On this shared VPS, Docker bridge/container-to-container networking may be affected by k3s/CNI/iptables state. Grafana should therefore query Prometheus through the host gateway too:
+
+```text
+http://host.docker.internal:9093
+```
+
+The monitoring compose file adds `host.docker.internal:host-gateway` to both Prometheus and Grafana for that reason.
+
 The Prometheus scrape targets are:
 
 | Service | Target |
