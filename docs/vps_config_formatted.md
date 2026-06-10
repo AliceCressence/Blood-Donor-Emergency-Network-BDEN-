@@ -1370,7 +1370,7 @@ In production, the frontend should call the backend through the same public orig
 https://bden.hinkaku.tech/api/...
 ```
 
-Do not expose service ports `8001` through `8005` publicly. Host Nginx routes `/api/`, `/health/`, and `/django-admin/` to the internal gateway, and routes every other path to the frontend.
+Do not expose service ports `8001` through `8005` publicly. Host Nginx routes `/api/`, `/health/`, and the configured admin prefix to the internal gateway, and routes every other path to the frontend.
 
 The frontend API client also guards against accidental production builds with `VITE_API_BASE_URL=http://localhost:8000`. If the app is opened on a real domain and the configured API URL is localhost, it falls back to `window.location.origin`, so auth calls still go to `https://bden.hinkaku.tech/api/auth/...`.
 
@@ -1729,15 +1729,23 @@ If that times out, use JSON import/provisioning instead of dashboard ID import.
 
 ### Django admin URLs
 
-In production Compose fallback, Django admin dashboards are routed through the public gateway:
+In production Compose fallback, Django admin dashboards are routed through the public gateway. The public prefix is controlled by:
+
+```env
+ADMIN_URL=/reserved
+```
+
+Use a leading slash and no trailing slash.
+
+The default public URLs are:
 
 | Service | URL |
 |---------|-----|
-| Auth | `https://bden.hinkaku.tech/django-admin/auth/` |
-| Donor | `https://bden.hinkaku.tech/django-admin/donor/` |
-| Request | `https://bden.hinkaku.tech/django-admin/request/` |
-| Campaign | `https://bden.hinkaku.tech/django-admin/campaign/` |
-| Notification | `https://bden.hinkaku.tech/django-admin/notification/` |
+| Auth | `https://bden.hinkaku.tech/reserved/auth/` |
+| Donor | `https://bden.hinkaku.tech/reserved/donor/` |
+| Request | `https://bden.hinkaku.tech/reserved/request/` |
+| Campaign | `https://bden.hinkaku.tech/reserved/campaign/` |
+| Notification | `https://bden.hinkaku.tech/reserved/notification/` |
 
 These routes proxy to each service's internal `/django-admin/` path. Use a superuser created inside the corresponding service database.
 

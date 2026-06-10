@@ -6,6 +6,7 @@ bden_app_dir: /var/www/bden
 bden_env_file: /var/www/bden/.env.prod
 bden_project: bden-prod
 bden_linux_user: bitnami
+admin_url: /reserved
 
 jenkins_http_port: 8090
 grafana_http_port: 3002

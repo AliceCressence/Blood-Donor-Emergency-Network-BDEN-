@@ -395,8 +395,10 @@ services:
       context: ./infrastructure/nginx
       network: ${BDEN_BUILD_NETWORK:-default}
     restart: unless-stopped
+    environment:
+      ADMIN_URL: ${ADMIN_URL:-/reserved}
     volumes:
-      - ./infrastructure/nginx/nginx.host.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./infrastructure/nginx/nginx.host.conf:/etc/nginx/templates/default.conf.template:ro
     depends_on:
       - auth-service
       - donor-service

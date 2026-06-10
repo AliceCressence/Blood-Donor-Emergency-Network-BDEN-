@@ -487,6 +487,7 @@ EOF
                         WAIT_FOR_HOSTS="${NOTIFICATION_DB_IP}:5432,${REDIS_IP}:6379"
 
                     DOLLAR='$'
+                    ADMIN_PATH="${ADMIN_URL:-/reserved}"
 
                     cat > /tmp/bden-gateway-default.conf <<EOF
 upstream frontend_app         { server ${FRONTEND_IP}:80; }
@@ -520,29 +521,53 @@ server {
   location /api/schema.json     { proxy_pass http://auth_service; }
   location /api/auth/           { proxy_pass http://auth_service; }
   location /api/admin/          { proxy_pass http://auth_service; }
-  location /django-admin/auth/ {
+  location ${ADMIN_PATH}/auth/ {
     proxy_pass http://auth_service/django-admin/;
-    proxy_redirect /django-admin/ /django-admin/auth/;
+    proxy_redirect /django-admin/ ${ADMIN_PATH}/auth/;
+    proxy_set_header Accept-Encoding "";
+    sub_filter_once off;
+    sub_filter_types text/html;
+    sub_filter '="/django-admin/' '="${ADMIN_PATH}/auth/';
   }
 
-  location /django-admin/donor/ {
+  location ${ADMIN_PATH}/donor/ {
     proxy_pass http://donor_service/django-admin/;
-    proxy_redirect /django-admin/ /django-admin/donor/;
+    proxy_redirect /django-admin/ ${ADMIN_PATH}/donor/;
+    proxy_set_header Accept-Encoding "";
+    sub_filter_once off;
+    sub_filter_types text/html;
+    sub_filter '="/django-admin/' '="${ADMIN_PATH}/donor/';
   }
 
-  location /django-admin/request/ {
+  location ${ADMIN_PATH}/request/ {
     proxy_pass http://request_service/django-admin/;
-    proxy_redirect /django-admin/ /django-admin/request/;
+    proxy_redirect /django-admin/ ${ADMIN_PATH}/request/;
+    proxy_set_header Accept-Encoding "";
+    sub_filter_once off;
+    sub_filter_types text/html;
+    sub_filter '="/django-admin/' '="${ADMIN_PATH}/request/';
   }
 
-  location /django-admin/campaign/ {
+  location ${ADMIN_PATH}/campaign/ {
     proxy_pass http://campaign_service/django-admin/;
-    proxy_redirect /django-admin/ /django-admin/campaign/;
+    proxy_redirect /django-admin/ ${ADMIN_PATH}/campaign/;
+    proxy_set_header Accept-Encoding "";
+    sub_filter_once off;
+    sub_filter_types text/html;
+    sub_filter '="/django-admin/' '="${ADMIN_PATH}/campaign/';
   }
 
-  location /django-admin/notification/ {
+  location ${ADMIN_PATH}/notification/ {
     proxy_pass http://notification_service/django-admin/;
-    proxy_redirect /django-admin/ /django-admin/notification/;
+    proxy_redirect /django-admin/ ${ADMIN_PATH}/notification/;
+    proxy_set_header Accept-Encoding "";
+    sub_filter_once off;
+    sub_filter_types text/html;
+    sub_filter '="/django-admin/' '="${ADMIN_PATH}/notification/';
+  }
+
+  location /static/ {
+    proxy_pass http://auth_service/static/;
   }
 
   location /api/donors/         { proxy_pass http://donor_service; }
