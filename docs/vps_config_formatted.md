@@ -1709,6 +1709,38 @@ cd infrastructure/ansible
 ansible-playbook playbooks/deploy-monitoring.yml
 ```
 
+### Importing Grafana dashboards
+
+If importing a dashboard by Grafana.com ID fails with `Gateway Timeout`, Grafana is timing out while trying to fetch dashboard metadata from the public Grafana API. This does not mean Prometheus is broken.
+
+Use one of these safer options:
+
+- Import dashboard JSON directly from your local machine.
+- Keep project dashboards provisioned from `infrastructure/prometheus/grafana/dashboards/`.
+- Fix outbound DNS/internet on the VPS later, then retry ID-based imports.
+
+Quick outbound check from the VPS:
+
+```bash
+docker exec -it bden-grafana sh -c "wget -S -O- https://grafana.com/api/health"
+```
+
+If that times out, use JSON import/provisioning instead of dashboard ID import.
+
+### Django admin URLs
+
+In production Compose fallback, Django admin dashboards are routed through the public gateway:
+
+| Service | URL |
+|---------|-----|
+| Auth | `https://bden.hinkaku.tech/django-admin/auth/` |
+| Donor | `https://bden.hinkaku.tech/django-admin/donor/` |
+| Request | `https://bden.hinkaku.tech/django-admin/request/` |
+| Campaign | `https://bden.hinkaku.tech/django-admin/campaign/` |
+| Notification | `https://bden.hinkaku.tech/django-admin/notification/` |
+
+These routes proxy to each service's internal `/django-admin/` path. Use a superuser created inside the corresponding service database.
+
 ### 13.1 — Create directories
 
 ```bash
