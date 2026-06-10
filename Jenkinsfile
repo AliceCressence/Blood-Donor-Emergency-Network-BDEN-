@@ -520,8 +520,30 @@ server {
   location /api/schema.json     { proxy_pass http://auth_service; }
   location /api/auth/           { proxy_pass http://auth_service; }
   location /api/admin/          { proxy_pass http://auth_service; }
-  location /django-admin/auth/  { proxy_pass http://auth_service/django-admin/; }
-  location /django-admin/donor/ { proxy_pass http://donor_service/django-admin/; }
+  location /django-admin/auth/ {
+    proxy_pass http://auth_service/django-admin/;
+    proxy_redirect /django-admin/ /django-admin/auth/;
+  }
+
+  location /django-admin/donor/ {
+    proxy_pass http://donor_service/django-admin/;
+    proxy_redirect /django-admin/ /django-admin/donor/;
+  }
+
+  location /django-admin/request/ {
+    proxy_pass http://request_service/django-admin/;
+    proxy_redirect /django-admin/ /django-admin/request/;
+  }
+
+  location /django-admin/campaign/ {
+    proxy_pass http://campaign_service/django-admin/;
+    proxy_redirect /django-admin/ /django-admin/campaign/;
+  }
+
+  location /django-admin/notification/ {
+    proxy_pass http://notification_service/django-admin/;
+    proxy_redirect /django-admin/ /django-admin/notification/;
+  }
 
   location /api/donors/         { proxy_pass http://donor_service; }
   location /api/estimation/     { proxy_pass http://donor_service; }
