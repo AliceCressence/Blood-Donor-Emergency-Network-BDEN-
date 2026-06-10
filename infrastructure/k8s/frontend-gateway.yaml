@@ -74,8 +74,47 @@ data:
       location /api/schema.json     { proxy_pass http://auth_service; }
       location /api/auth/           { proxy_pass http://auth_service; }
       location /api/admin/          { proxy_pass http://auth_service; }
-      location /django-admin/auth/  { proxy_pass http://auth_service/django-admin/; }
-      location /django-admin/donor/ { proxy_pass http://donor_service/django-admin/; }
+      location /reserved/auth/ {
+        proxy_pass http://auth_service/django-admin/;
+        proxy_redirect /django-admin/ /reserved/auth/;
+        proxy_set_header Accept-Encoding "";
+        sub_filter_once off;
+        sub_filter_types text/html;
+        sub_filter '="/django-admin/' '="/reserved/auth/';
+      }
+      location /reserved/donor/ {
+        proxy_pass http://donor_service/django-admin/;
+        proxy_redirect /django-admin/ /reserved/donor/;
+        proxy_set_header Accept-Encoding "";
+        sub_filter_once off;
+        sub_filter_types text/html;
+        sub_filter '="/django-admin/' '="/reserved/donor/';
+      }
+      location /reserved/request/ {
+        proxy_pass http://request_service/django-admin/;
+        proxy_redirect /django-admin/ /reserved/request/;
+        proxy_set_header Accept-Encoding "";
+        sub_filter_once off;
+        sub_filter_types text/html;
+        sub_filter '="/django-admin/' '="/reserved/request/';
+      }
+      location /reserved/campaign/ {
+        proxy_pass http://campaign_service/django-admin/;
+        proxy_redirect /django-admin/ /reserved/campaign/;
+        proxy_set_header Accept-Encoding "";
+        sub_filter_once off;
+        sub_filter_types text/html;
+        sub_filter '="/django-admin/' '="/reserved/campaign/';
+      }
+      location /reserved/notification/ {
+        proxy_pass http://notification_service/django-admin/;
+        proxy_redirect /django-admin/ /reserved/notification/;
+        proxy_set_header Accept-Encoding "";
+        sub_filter_once off;
+        sub_filter_types text/html;
+        sub_filter '="/django-admin/' '="/reserved/notification/';
+      }
+      location /static/ { proxy_pass http://auth_service/static/; }
 
       location /api/donors/         { proxy_pass http://donor_service; }
       location /api/estimation/     { proxy_pass http://donor_service; }
