@@ -1676,7 +1676,7 @@ On this shared VPS, Docker bridge/container-to-container networking may be affec
 http://host.docker.internal:9093
 ```
 
-The monitoring compose file adds `host.docker.internal:host-gateway` to both Prometheus and Grafana for that reason.
+The monitoring compose file adds `host.docker.internal:host-gateway` to both Prometheus and Grafana for that reason. Prometheus is published on both `127.0.0.1:9093` for host-side checks and `172.17.0.1:9093` for Grafana containers that reach the host through Docker's bridge gateway.
 
 The Prometheus scrape targets are:
 
