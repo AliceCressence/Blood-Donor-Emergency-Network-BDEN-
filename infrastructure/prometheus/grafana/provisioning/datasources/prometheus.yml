@@ -5,6 +5,6 @@ datasources:
     uid: bden-prometheus
     type: prometheus
     access: proxy
-    url: http://prometheus:9090
+    url: http://host.docker.internal:9093
     isDefault: true
     editable: true

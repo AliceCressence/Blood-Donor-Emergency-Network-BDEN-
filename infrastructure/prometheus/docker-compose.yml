@@ -21,6 +21,8 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:3002:3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-change-this-immediately}
