@@ -101,11 +101,11 @@ pipeline {
                 expression { return !params.DEPLOY_ONLY }
             }
             steps {
-                sh 'docker compose --env-file ${CI_ENV_FILE} -p ${CI_PROJECT} run --rm auth-service python manage.py check'
-                sh 'docker compose --env-file ${CI_ENV_FILE} -p ${CI_PROJECT} run --rm donor-service python manage.py check'
-                sh 'docker compose --env-file ${CI_ENV_FILE} -p ${CI_PROJECT} run --rm request-service python manage.py check'
-                sh 'docker compose --env-file ${CI_ENV_FILE} -p ${CI_PROJECT} run --rm campaign-service python manage.py check'
-                sh 'docker compose --env-file ${CI_ENV_FILE} -p ${CI_PROJECT} run --rm notification-service python manage.py check'
+                sh 'docker compose --env-file ${CI_ENV_FILE} -p ${CI_PROJECT} run --rm --no-deps auth-service python manage.py check'
+                sh 'docker compose --env-file ${CI_ENV_FILE} -p ${CI_PROJECT} run --rm --no-deps donor-service python manage.py check'
+                sh 'docker compose --env-file ${CI_ENV_FILE} -p ${CI_PROJECT} run --rm --no-deps request-service python manage.py check'
+                sh 'docker compose --env-file ${CI_ENV_FILE} -p ${CI_PROJECT} run --rm --no-deps campaign-service python manage.py check'
+                sh 'docker compose --env-file ${CI_ENV_FILE} -p ${CI_PROJECT} run --rm --no-deps notification-service python manage.py check'
             }
         }
 
@@ -114,11 +114,11 @@ pipeline {
                 expression { return !params.DEPLOY_ONLY }
             }
             steps {
-                sh 'docker compose --env-file ${CI_ENV_FILE} -p ${CI_PROJECT} run --rm auth-service pytest'
-                sh 'docker compose --env-file ${CI_ENV_FILE} -p ${CI_PROJECT} run --rm donor-service pytest'
-                sh 'docker compose --env-file ${CI_ENV_FILE} -p ${CI_PROJECT} run --rm request-service pytest'
-                sh 'docker compose --env-file ${CI_ENV_FILE} -p ${CI_PROJECT} run --rm campaign-service pytest'
-                sh 'docker compose --env-file ${CI_ENV_FILE} -p ${CI_PROJECT} run --rm notification-service pytest'
+                sh 'docker compose --env-file ${CI_ENV_FILE} -p ${CI_PROJECT} run --rm --no-deps auth-service pytest'
+                sh 'docker compose --env-file ${CI_ENV_FILE} -p ${CI_PROJECT} run --rm --no-deps donor-service pytest'
+                sh 'docker compose --env-file ${CI_ENV_FILE} -p ${CI_PROJECT} run --rm --no-deps request-service pytest'
+                sh 'docker compose --env-file ${CI_ENV_FILE} -p ${CI_PROJECT} run --rm --no-deps campaign-service pytest'
+                sh 'docker compose --env-file ${CI_ENV_FILE} -p ${CI_PROJECT} run --rm --no-deps notification-service pytest'
             }
         }
 
