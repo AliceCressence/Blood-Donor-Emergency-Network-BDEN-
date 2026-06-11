@@ -34,6 +34,7 @@ pipeline {
         VITE_API_BASE_URL = 'http://localhost:8000'
         PORT_PREFIX = '1'
         BDEN_BUILD_NETWORK = 'host'
+        NOTIFY_EMAIL = 'joelfah2003@gmail.com'
     }
 
     stages {
@@ -673,6 +674,43 @@ EOF
     post {
         always {
             sh 'docker compose --env-file ${CI_ENV_FILE} -p ${CI_PROJECT} down --remove-orphans -v'
+            script {
+                def result = currentBuild.currentResult ?: 'UNKNOWN'
+                def subject = "BDEN Jenkins: ${result} - ${env.JOB_NAME} #${env.BUILD_NUMBER}"
+                def body = """
+BDEN pipeline finished.
+
+Result: ${result}
+Job: ${env.JOB_NAME}
+Build: #${env.BUILD_NUMBER}
+Branch/Main match: ${env.IS_MAIN_BRANCH ?: 'unknown'}
+Deploy prod: ${params.DEPLOY_PROD}
+Deploy only: ${params.DEPLOY_ONLY}
+
+Build URL:
+${env.BUILD_URL}
+"""
+
+                try {
+                    emailext(
+                        to: env.NOTIFY_EMAIL,
+                        subject: subject,
+                        body: body,
+                        mimeType: 'text/plain'
+                    )
+                } catch (err) {
+                    echo "Email Extension notification failed or is not installed: ${err}"
+                    try {
+                        mail(
+                            to: env.NOTIFY_EMAIL,
+                            subject: subject,
+                            body: body
+                        )
+                    } catch (mailErr) {
+                        echo "Basic Jenkins mail notification also failed: ${mailErr}"
+                    }
+                }
+            }
         }
     }
 }
