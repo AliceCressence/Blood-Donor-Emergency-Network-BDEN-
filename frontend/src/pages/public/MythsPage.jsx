@@ -16,7 +16,7 @@ export default function MythsPage() {
     const timer = setTimeout(() => {
       setLoading(true)
       mythApi.list({ category: category || undefined })
-        .then(data => { if (mounted) { setArticles(data); setError('') } })
+        .then(data => { if (mounted) { setArticles(Array.isArray(data) ? data : (data?.results ?? [])); setError('') } })
         .catch(err => { if (mounted) setError(err.message) })
         .finally(() => { if (mounted) setLoading(false) })
     }, 0)

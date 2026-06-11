@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Droplets, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import FluidBg from '../../components/shared/FluidBg'
 
 export default function Login() {
   const { login, loginWithGoogle }  = useAuth()
@@ -54,17 +55,14 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="h-screen flex overflow-hidden">
 
       {/* ── Left branding panel ── */}
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-16 bg-warm-950 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-[0.04]"
-          style={{ backgroundImage: 'linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)', backgroundSize: '48px 48px' }} />
-        <div className="absolute -bottom-32 -right-32 w-[480px] h-[480px] opacity-[0.07]">
-          <svg viewBox="0 0 200 240" fill="none">
-            <path d="M100 10 C100 10 20 100 20 150 A80 80 0 0 0 180 150 C180 100 100 10 100 10Z" fill="#E51111"/>
-          </svg>
-        </div>
+        <FluidBg />
+        {/* Readability overlay — sits between blobs and content */}
+        <div className="absolute inset-0 z-[1] pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse at 30% 50%, rgba(13,12,9,0.22) 0%, rgba(13,12,9,0.48) 100%)' }} />
 
         <Link to="/" className="relative z-10 flex items-center gap-2">
           <div className="w-9 h-9 rounded-xl bg-blood-600 flex items-center justify-center">
@@ -84,7 +82,7 @@ export default function Login() {
         </div>
 
         <div className="relative z-10 grid grid-cols-3 gap-4">
-          {[{ value: '12,480+', label: 'Donors' }, { value: '89', label: 'Hospitals' }, { value: '3,240+', label: 'Lives saved' }].map(s => (
+          {[{ value: '12.5k+', label: 'Donors' }, { value: '89', label: 'Hospitals' }, { value: '3.2k+', label: 'Lives saved' }].map(s => (
             <div key={s.label} className="p-4 rounded-2xl bg-white/5 border border-white/10">
               <p className="font-display font-bold text-2xl text-blood-400">{s.value}</p>
               <p className="text-xs text-warm-500 mt-0.5">{s.label}</p>
@@ -93,9 +91,10 @@ export default function Login() {
         </div>
       </div>
 
-      {/* ── Right form panel ── */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-16 bg-warm-50">
-        <div className="w-full max-w-md">
+      {/* ── Right form panel — scrollable ── */}
+      <div className="w-full lg:w-1/2 overflow-y-auto bg-warm-50">
+        <div className="min-h-full flex items-center justify-center p-6 lg:p-16">
+        <div className="w-full max-w-md py-4">
 
           <div className="lg:hidden flex items-center gap-2 mb-8">
             <div className="w-8 h-8 rounded-xl bg-blood-600 flex items-center justify-center">
@@ -182,6 +181,7 @@ export default function Login() {
               Register your hospital →
             </Link>
           </div>
+        </div>
         </div>
       </div>
     </div>

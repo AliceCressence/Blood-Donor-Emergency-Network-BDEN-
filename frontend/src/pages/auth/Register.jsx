@@ -6,6 +6,7 @@ import {
   Eye, EyeOff, ArrowRight, ArrowLeft, CheckCircle, MapPin, HelpCircle
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import FluidBg from '../../components/shared/FluidBg'
 
 const BLOOD_TYPES  = ['A+', 'A−', 'B+', 'B−', 'AB+', 'AB−', 'O+', 'O−']
 const FACILITY_TYPES = ['Public hospital', 'Private clinic', 'Health centre', 'NGO health facility', 'Other']
@@ -84,17 +85,14 @@ export default function Register() {
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="h-screen flex overflow-hidden">
 
       {/* ── Left branding ── */}
       <div className="hidden lg:flex lg:w-5/12 flex-col justify-between p-16 bg-warm-950 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-[0.04]"
-          style={{ backgroundImage: 'linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)', backgroundSize: '48px 48px' }} />
-        <div className="absolute -top-20 -right-20 w-96 h-96 opacity-[0.06]">
-          <svg viewBox="0 0 200 240" fill="none">
-            <path d="M100 10 C100 10 20 100 20 150 A80 80 0 0 0 180 150 C180 100 100 10 100 10Z" fill="#E51111"/>
-          </svg>
-        </div>
+        <FluidBg />
+        {/* Readability overlay — sits between blobs and content */}
+        <div className="absolute inset-0 z-[1] pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse at 30% 50%, rgba(13,12,9,0.22) 0%, rgba(13,12,9,0.48) 100%)' }} />
 
         <Link to="/" className="relative z-10 flex items-center gap-2">
           <div className="w-9 h-9 rounded-xl bg-blood-600 flex items-center justify-center">
@@ -119,9 +117,10 @@ export default function Register() {
         </p>
       </div>
 
-      {/* ── Right form ── */}
-      <div className="w-full lg:w-7/12 flex items-center justify-center p-6 lg:p-16 bg-warm-50">
-        <div className="w-full max-w-lg">
+      {/* ── Right form — scrollable ── */}
+      <div className="w-full lg:w-7/12 overflow-y-auto bg-warm-50">
+        <div className="min-h-full flex items-center justify-center p-6 lg:p-16">
+        <div className="w-full max-w-lg py-4">
 
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2 mb-8">
@@ -480,6 +479,7 @@ export default function Register() {
             </div>
           )}
 
+        </div>
         </div>
       </div>
     </div>
