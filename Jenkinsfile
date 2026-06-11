@@ -526,8 +526,8 @@ server {
     proxy_redirect /django-admin/ ${ADMIN_PATH}/auth/;
     proxy_set_header Accept-Encoding "";
     sub_filter_once off;
-    sub_filter_types text/html;
     sub_filter '="/django-admin/' '="${ADMIN_PATH}/auth/';
+    sub_filter 'next=/django-admin/' 'next=${ADMIN_PATH}/auth/';
   }
 
   location ${ADMIN_PATH}/donor/ {
@@ -535,8 +535,8 @@ server {
     proxy_redirect /django-admin/ ${ADMIN_PATH}/donor/;
     proxy_set_header Accept-Encoding "";
     sub_filter_once off;
-    sub_filter_types text/html;
     sub_filter '="/django-admin/' '="${ADMIN_PATH}/donor/';
+    sub_filter 'next=/django-admin/' 'next=${ADMIN_PATH}/donor/';
   }
 
   location ${ADMIN_PATH}/request/ {
@@ -544,8 +544,8 @@ server {
     proxy_redirect /django-admin/ ${ADMIN_PATH}/request/;
     proxy_set_header Accept-Encoding "";
     sub_filter_once off;
-    sub_filter_types text/html;
     sub_filter '="/django-admin/' '="${ADMIN_PATH}/request/';
+    sub_filter 'next=/django-admin/' 'next=${ADMIN_PATH}/request/';
   }
 
   location ${ADMIN_PATH}/campaign/ {
@@ -553,8 +553,8 @@ server {
     proxy_redirect /django-admin/ ${ADMIN_PATH}/campaign/;
     proxy_set_header Accept-Encoding "";
     sub_filter_once off;
-    sub_filter_types text/html;
     sub_filter '="/django-admin/' '="${ADMIN_PATH}/campaign/';
+    sub_filter 'next=/django-admin/' 'next=${ADMIN_PATH}/campaign/';
   }
 
   location ${ADMIN_PATH}/notification/ {
@@ -562,8 +562,8 @@ server {
     proxy_redirect /django-admin/ ${ADMIN_PATH}/notification/;
     proxy_set_header Accept-Encoding "";
     sub_filter_once off;
-    sub_filter_types text/html;
     sub_filter '="/django-admin/' '="${ADMIN_PATH}/notification/';
+    sub_filter 'next=/django-admin/' 'next=${ADMIN_PATH}/notification/';
   }
 
   location /static/ {
