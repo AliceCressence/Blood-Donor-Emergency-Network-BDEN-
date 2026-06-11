@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  Droplets, Heart, Building2, User, Mail, Lock, Phone,
+  Heart, Building2, User, Mail, Lock, Phone,
   Eye, EyeOff, ArrowRight, ArrowLeft, CheckCircle, MapPin, HelpCircle
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
@@ -90,14 +90,14 @@ export default function Register() {
       {/* ── Left branding ── */}
       <div className="hidden lg:flex lg:w-5/12 flex-col justify-between p-16 bg-warm-950 relative overflow-hidden">
         <FluidBg />
+        <div className="bden-auth-grid" />
+        <div className="bden-auth-sweep" />
         {/* Readability overlay — sits between blobs and content */}
         <div className="absolute inset-0 z-[1] pointer-events-none"
           style={{ background: 'radial-gradient(ellipse at 30% 50%, rgba(13,12,9,0.22) 0%, rgba(13,12,9,0.48) 100%)' }} />
 
         <Link to="/" className="relative z-10 flex items-center gap-2">
-          <div className="w-9 h-9 rounded-xl bg-blood-600 flex items-center justify-center">
-            <Droplets size={18} className="text-white" />
-          </div>
+          <img src="/favicon.svg" alt="BDEN" className="w-9 h-9 rounded-xl shadow-[0_2px_8px_rgba(229,17,17,0.28)]" />
           <span className="font-display font-bold text-xl text-white">BD<span className="text-blood-500">EN</span></span>
         </Link>
 
@@ -124,9 +124,7 @@ export default function Register() {
 
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2 mb-8">
-            <div className="w-8 h-8 rounded-xl bg-blood-600 flex items-center justify-center">
-              <Droplets size={16} className="text-white" />
-            </div>
+            <img src="/favicon.svg" alt="BDEN" className="w-8 h-8 rounded-xl shadow-[0_2px_8px_rgba(229,17,17,0.28)]" />
             <span className="font-display font-bold text-lg text-warm-950">BD<span className="text-blood-600">EN</span></span>
           </div>
 
