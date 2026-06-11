@@ -7,6 +7,10 @@ function resolveApiBaseUrl() {
   const isLocalBrowser = ['localhost', '127.0.0.1'].includes(window.location.hostname)
   const configuredIsLocal = configuredUrl?.includes('localhost') || configuredUrl?.includes('127.0.0.1')
 
+  if (isLocalBrowser && !configuredUrl) {
+    return 'http://localhost:8000'
+  }
+
   if (!configuredUrl || (!isLocalBrowser && configuredIsLocal)) {
     return window.location.origin
   }

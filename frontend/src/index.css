@@ -5685,3 +5685,408 @@ code, pre, kbd, .mono {
     line-height: 5rem;
   }
 }
+/* BDEN landing hero: explicit CSS because this file is compiled Tailwind output. */
+.bden-hero {
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  overflow: hidden;
+  background: #1e1d18;
+  padding: clamp(7.25rem, 12vh, 9rem) 1rem clamp(2.25rem, 4vh, 3.25rem);
+}
+
+.bden-hero-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 24%, rgba(255,255,255,.08) 0%, transparent 34%),
+    linear-gradient(180deg, rgba(17,16,13,.52) 0%, rgba(17,16,13,.22) 44%, rgba(17,16,13,.72) 100%);
+}
+
+.bden-hero-grid {
+  position: absolute;
+  z-index: 1;
+  inset: -7rem;
+  pointer-events: none;
+  opacity: .22;
+  background-image:
+    linear-gradient(rgba(255,255,255,.13) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.13) 1px, transparent 1px);
+  background-size: 58px 58px;
+  mask-image: radial-gradient(ellipse at center, #000 0%, #000 40%, transparent 72%);
+  animation: bdenHeroGridDrift 18s ease-in-out infinite;
+}
+
+.bden-hero-sweep {
+  position: absolute;
+  z-index: 1;
+  left: -10%;
+  top: 28%;
+  width: 120%;
+  height: 11rem;
+  pointer-events: none;
+  transform: rotate(-6deg);
+  background: linear-gradient(90deg, transparent, rgba(255,97,97,.2), transparent);
+  filter: blur(24px);
+  animation: bdenHeroSweep 12s ease-in-out infinite alternate;
+}
+
+.bden-hero-content {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 1060px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.bden-hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: .55rem;
+  min-height: 2.75rem;
+  padding: .65rem 1.1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255,97,97,.28);
+  background: rgba(229,17,17,.15);
+  color: #ffe0e0;
+  font-size: .72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .16em;
+  backdrop-filter: blur(18px);
+}
+
+.bden-hero-eyebrow span {
+  width: .4rem;
+  height: .4rem;
+  border-radius: 999px;
+  background: #ff9b9b;
+  box-shadow: 0 0 0 6px rgba(255,155,155,.12);
+}
+
+.bden-hero-title {
+  max-width: 1050px;
+  margin: clamp(1.55rem, 3vh, 2.25rem) auto 0;
+  color: #fff;
+  font-family: Syne, sans-serif;
+  font-size: clamp(3.65rem, 6.2vw, 6.15rem);
+  line-height: .94;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.bden-hero-title span {
+  display: block;
+  color: #e51111;
+}
+
+.bden-hero-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: .75rem;
+  max-width: 780px;
+  margin-top: clamp(1.45rem, 2.8vh, 2rem);
+}
+
+.bden-hero-chips > div {
+  display: inline-flex;
+  align-items: center;
+  gap: .55rem;
+  min-height: 2.55rem;
+  padding: 0 1rem;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.1);
+  color: rgba(255,255,255,.84);
+  font-size: .78rem;
+  font-weight: 800;
+  backdrop-filter: blur(18px);
+}
+
+.bden-hero-chips svg {
+  flex: none;
+  color: #5eead4;
+}
+
+.bden-hero-copy {
+  max-width: 720px;
+  margin: clamp(1.45rem, 2.8vh, 2rem) auto 0;
+  color: #e8e7e1;
+  font-size: clamp(1rem, 1.5vw, 1.22rem);
+  line-height: 1.62;
+}
+
+.bden-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: .85rem;
+  margin-top: clamp(1.7rem, 3vh, 2.25rem);
+}
+
+.bden-hero-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .6rem;
+  min-height: 3.25rem;
+  padding: 0 1.7rem;
+  border-radius: 16px;
+  font-size: .9rem;
+  font-weight: 900;
+  transition: transform .2s ease, background-color .2s ease, box-shadow .2s ease;
+}
+
+.bden-hero-actions button:hover {
+  transform: translateY(-2px);
+}
+
+.bden-hero-primary {
+  color: #fff;
+  background: #e51111;
+  box-shadow: 0 10px 34px rgba(229,17,17,.38);
+}
+
+.bden-hero-primary:hover {
+  background: #c20a0a;
+  box-shadow: 0 16px 44px rgba(229,17,17,.48);
+}
+
+.bden-hero-secondary {
+  color: #fff;
+  border: 1px solid rgba(255,255,255,.2);
+  background: rgba(255,255,255,.1);
+  backdrop-filter: blur(18px);
+}
+
+.bden-hero-secondary:hover {
+  background: rgba(255,255,255,.16);
+}
+
+.bden-hero-card-wrap {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 760px;
+  margin: clamp(2.4rem, 5vh, 3.8rem) auto 0;
+}
+
+.bden-live-card {
+  width: 100%;
+  border-radius: 32px;
+  border: 1px solid rgba(255,255,255,.15);
+  background: rgba(30,29,24,.8);
+  padding: .65rem;
+  box-shadow: 0 24px 72px rgba(0,0,0,.42);
+  backdrop-filter: blur(24px);
+  transition: opacity .5s ease;
+}
+
+.bden-live-card-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 25px;
+  border: 1px solid rgba(255,255,255,.1);
+  background: rgba(255,255,255,.045);
+}
+
+.bden-live-card-left {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.bden-live-blood {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 20px;
+  border: 1px solid rgba(255,97,97,.35);
+  background: rgba(248,48,48,.15);
+}
+
+.bden-live-blood span {
+  color: #ff9b9b;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 1.45rem;
+  font-weight: 900;
+}
+
+.bden-live-copy {
+  min-width: 0;
+  text-align: left;
+}
+
+.bden-live-label {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  min-height: 1.6rem;
+  padding: 0 .75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255,155,155,.15);
+  background: rgba(248,48,48,.15);
+  color: #ffc5c5;
+  font-size: .63rem;
+  font-weight: 900;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+
+.bden-live-label span {
+  width: .38rem;
+  height: .38rem;
+  border-radius: 999px;
+  background: #ff9b9b;
+}
+
+.bden-live-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: .55rem;
+  color: #fff;
+  font-family: Syne, sans-serif;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.bden-live-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: .2rem;
+  color: #b5b2a5;
+  font-size: .78rem;
+}
+
+.bden-live-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .55rem;
+  width: 18rem;
+  flex: none;
+}
+
+.bden-live-metrics > div {
+  padding: .65rem .75rem;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.1);
+  background: rgba(255,255,255,.06);
+}
+
+.bden-live-metrics p {
+  color: #9b9889;
+  font-size: .62rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+}
+
+.bden-live-metrics strong {
+  display: block;
+  margin-top: .25rem;
+  color: #fff;
+  font-size: .9rem;
+}
+
+.bden-live-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .6rem 1rem .2rem;
+  color: #9b9889;
+  font-size: .72rem;
+}
+
+.bden-live-foot span:last-child {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  white-space: nowrap;
+}
+
+.bden-live-foot svg {
+  color: #fcd34d;
+}
+
+.bden-auth-grid {
+  position: absolute;
+  z-index: 1;
+  inset: -5rem;
+  pointer-events: none;
+  opacity: .18;
+  background-image:
+    linear-gradient(rgba(255,255,255,.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.12) 1px, transparent 1px);
+  background-size: 52px 52px;
+  mask-image: radial-gradient(ellipse at 35% 50%, #000 0%, #000 42%, transparent 76%);
+  animation: bdenHeroGridDrift 20s ease-in-out infinite;
+}
+
+.bden-auth-sweep {
+  position: absolute;
+  z-index: 1;
+  left: -20%;
+  top: 18%;
+  width: 135%;
+  height: 9rem;
+  pointer-events: none;
+  transform: rotate(-8deg);
+  background: linear-gradient(90deg, transparent, rgba(255,97,97,.16), transparent);
+  filter: blur(24px);
+  animation: bdenHeroSweep 14s ease-in-out infinite alternate;
+}
+
+@keyframes bdenHeroGridDrift {
+  0% { transform: rotate(-7deg) translate3d(-2%, -2%, 0); }
+  50% { transform: rotate(-7deg) translate3d(2%, 1%, 0); }
+  100% { transform: rotate(-7deg) translate3d(-2%, -2%, 0); }
+}
+
+@keyframes bdenHeroSweep {
+  0% { transform: rotate(-6deg) translateX(-18%); opacity: .12; }
+  50% { opacity: .28; }
+  100% { transform: rotate(-6deg) translateX(18%); opacity: .12; }
+}
+
+@media (max-width: 760px) {
+  .bden-hero {
+    min-height: 100vh;
+    padding-top: 7.5rem;
+  }
+
+  .bden-hero-title {
+    font-size: clamp(2.8rem, 13vw, 4.2rem);
+  }
+
+  .bden-live-card-main {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .bden-live-metrics {
+    width: 100%;
+  }
+
+  .bden-live-foot {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: .35rem;
+  }
+}
