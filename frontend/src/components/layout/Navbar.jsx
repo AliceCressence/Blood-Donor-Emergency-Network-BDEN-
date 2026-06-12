@@ -63,7 +63,7 @@ export default function Navbar() {
             <img src="/favicon.svg" alt="BDEN" className="w-9 h-9 rounded-xl shadow-[0_2px_8px_rgba(229,17,17,0.28)]" />
             <div className="flex flex-col leading-none">
               <span className="font-display font-bold text-sm text-warm-950 dark:text-white tracking-tight">
-                BD<span className="text-blood-600">EN</span>
+                BDEN
               </span>
               <span className="text-[9px] text-warm-800 dark:text-white/40 font-body tracking-tight leading-tight">
                 Blood Donation Emergency Network
