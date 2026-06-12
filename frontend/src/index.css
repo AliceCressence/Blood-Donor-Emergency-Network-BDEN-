@@ -6068,25 +6068,203 @@ code, pre, kbd, .mono {
 @media (max-width: 760px) {
   .bden-hero {
     min-height: 100vh;
-    padding-top: 7.5rem;
+    padding: 6.6rem .9rem 2rem;
   }
 
   .bden-hero-title {
-    font-size: clamp(2.8rem, 13vw, 4.2rem);
+    max-width: 22rem;
+    font-size: clamp(2.65rem, 12vw, 4rem);
+    line-height: .96;
+  }
+
+  .bden-hero-chips {
+    gap: .5rem;
+    margin-top: 1.25rem;
+  }
+
+  .bden-hero-chips > div {
+    min-height: 2.25rem;
+    padding: 0 .75rem;
+    border-radius: 14px;
+    font-size: .7rem;
+  }
+
+  .bden-hero-copy {
+    max-width: 21rem;
+    margin-top: 1.3rem;
+    font-size: .95rem;
+    line-height: 1.55;
+  }
+
+  .bden-hero-actions {
+    width: 100%;
+    gap: .65rem;
+    margin-top: 1.45rem;
+  }
+
+  .bden-hero-actions a {
+    flex: 1 1 9rem;
+    min-width: 0;
+  }
+
+  .bden-hero-actions button {
+    width: 100%;
+    min-height: 3rem;
+    padding: 0 .9rem;
+    border-radius: 14px;
+    font-size: .78rem;
+  }
+
+  .bden-hero-card-wrap {
+    margin-top: 1.75rem;
   }
 
   .bden-live-card-main {
     align-items: stretch;
     flex-direction: column;
+    gap: .8rem;
+    padding: .85rem;
+    border-radius: 22px;
+  }
+
+  .bden-live-card {
+    border-radius: 26px;
+    padding: .5rem;
+  }
+
+  .bden-live-card-left {
+    gap: .75rem;
+  }
+
+  .bden-live-blood {
+    width: 3.35rem;
+    height: 3.35rem;
+    border-radius: 16px;
+  }
+
+  .bden-live-blood span {
+    font-size: 1.2rem;
+  }
+
+  .bden-live-label {
+    min-height: 1.35rem;
+    padding: 0 .55rem;
+    font-size: .55rem;
+  }
+
+  .bden-live-title {
+    margin-top: .4rem;
+    font-size: .88rem;
+  }
+
+  .bden-live-meta {
+    font-size: .7rem;
   }
 
   .bden-live-metrics {
     width: 100%;
+    gap: .45rem;
+  }
+
+  .bden-live-metrics > div {
+    padding: .55rem .6rem;
+    border-radius: 14px;
+  }
+
+  .bden-live-metrics p {
+    font-size: .54rem;
+  }
+
+  .bden-live-metrics strong {
+    font-size: .78rem;
   }
 
   .bden-live-foot {
     align-items: flex-start;
     flex-direction: column;
     gap: .35rem;
+    padding: .45rem .75rem .15rem;
+    font-size: .66rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .bden-navbar-shell {
+    width: calc(100% - .75rem) !important;
+  }
+
+  .bden-navbar {
+    gap: .45rem !important;
+    padding: .45rem .45rem .45rem .55rem !important;
+    border-radius: 22px !important;
+  }
+
+  .bden-navbar-brand {
+    min-width: 0;
+    gap: .45rem !important;
+  }
+
+  .bden-navbar-brand img {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 10px;
+  }
+
+  .bden-navbar-brand > div {
+    min-width: 0;
+  }
+
+  .bden-navbar-brand span:first-child {
+    font-size: .78rem;
+  }
+
+  .bden-navbar-brand span:last-child {
+    display: none;
+  }
+
+  .bden-navbar-actions,
+  .bden-navbar-guest-actions {
+    gap: .35rem !important;
+    min-width: 0;
+  }
+
+  .bden-navbar-actions button,
+  .bden-navbar-guest-actions button {
+    height: 2.35rem !important;
+    border-radius: 14px !important;
+    font-size: .78rem !important;
+  }
+
+  .bden-navbar-register {
+    padding-left: .8rem !important;
+    padding-right: .8rem !important;
+  }
+
+  .bden-navbar-register-full {
+    display: none;
+  }
+
+  .bden-navbar-register-short {
+    display: inline;
+  }
+}
+
+@media (min-width: 641px) {
+  .bden-navbar-register-short {
+    display: none;
+  }
+}
+
+@media (max-width: 390px) {
+  .bden-navbar-guest-actions a:first-child {
+    display: none;
+  }
+
+  .bden-hero-title {
+    font-size: clamp(2.35rem, 12vw, 3.35rem);
+  }
+
+  .bden-hero-copy {
+    display: none;
   }
 }

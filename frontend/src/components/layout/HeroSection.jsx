@@ -1,7 +1,7 @@
 // src/components/layout/HeroSection.jsx
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Building2, CheckCircle, Clock, Droplets, Heart, MapPin, Shield } from 'lucide-react'
+import { ArrowRight, Building2, CheckCircle, Droplets, Heart, MapPin, Shield } from 'lucide-react'
 import FluidBg from '../shared/FluidBg'
 
 const MOCK_REQUESTS = [
@@ -136,7 +136,7 @@ export default function HeroSection() {
 
         <h1 className="bden-hero-title">
           Give blood when every
-          <span className='whitespace-nowrap'>minute matters</span>
+          <span>minute matters</span>
         </h1>
 
         <div className="bden-hero-chips">

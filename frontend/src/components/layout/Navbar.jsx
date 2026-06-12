@@ -47,8 +47,8 @@ export default function Navbar() {
   return (
     <>
       {/* Floating bar — fixed, centered, max-width capped */}
-      <header className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-6xl">
-        <nav className="
+      <header className="bden-navbar-shell fixed top-3 sm:top-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-1rem)] max-w-6xl">
+        <nav className="bden-navbar
           flex items-center justify-between gap-4
           px-4 py-2 pe-2
           rounded-3xl
@@ -59,7 +59,7 @@ export default function Navbar() {
         ">
 
           {/* ── Logo ── */}
-          <Link to="/" className="flex items-center gap-2.5 flex-shrink-0 group">
+          <Link to="/" className="bden-navbar-brand flex items-center gap-2.5 flex-shrink-0 group">
             <img src="/favicon.svg" alt="BDEN" className="w-9 h-9 rounded-xl shadow-[0_2px_8px_rgba(229,17,17,0.28)]" />
             <div className="flex flex-col leading-none">
               <span className="font-display font-bold text-sm text-warm-950 dark:text-white tracking-tight">
@@ -72,7 +72,7 @@ export default function Navbar() {
           </Link>
 
           {/* ── Right side ── */}
-          <div className="flex items-center gap-2">
+          <div className="bden-navbar-actions flex items-center gap-2">
 
             {/* Explore dropdown — visitor only. Signed-in users get these in their profile menu. */}
             {!user && (
@@ -284,7 +284,7 @@ export default function Navbar() {
               </>
             ) : (
               /* Logged-out: explore + sign in + register */
-              <div className="flex items-center gap-2">
+              <div className="bden-navbar-guest-actions flex items-center gap-2">
                 <Link to="/login">
                   <button className="h-11 px-4 rounded-2xl text-sm font-semibold
                                      text-warm-700 dark:text-white/70
@@ -294,12 +294,13 @@ export default function Navbar() {
                   </button>
                 </Link>
                 <Link to="/register">
-                  <button className="h-11 px-5 rounded-2xl text-sm font-semibold
+                  <button className="bden-navbar-register h-11 px-5 rounded-2xl text-sm font-semibold
                                      bg-blood-600 hover:bg-blood-700 text-white
                                      shadow-[0_2px_8px_rgba(229,17,17,0.30)]
                                      hover:shadow-[0_4px_16px_rgba(229,17,17,0.40)]
                                      transition-all duration-200">
-                    Register as donor
+                    <span className="bden-navbar-register-full">Register as donor</span>
+                    <span className="bden-navbar-register-short">Join</span>
                   </button>
                 </Link>
               </div>
